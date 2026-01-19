@@ -11,7 +11,6 @@
 #import <pthread.h>
 
 NS_ASSUME_NONNULL_BEGIN
-
 // ============================================================================
 // Fast JIT Toggle Macros (DolphinOS-style)
 // ============================================================================
@@ -42,7 +41,7 @@ static inline void ARMSX2_JIT_DisableWrite(void) {
 
 // Fast instruction cache invalidation
 // Call after writing code to ensure CPU sees the new instructions
-static inline void ARMSX2_JIT_FlushCache(void* addr, size_t len) {
+static inline void ARMSX2_JIT_FlushCache(void *addr, size_t len) {
     extern void sys_icache_invalidate(void *start, size_t len);
     sys_icache_invalidate(addr, len);
 }
@@ -56,12 +55,13 @@ static inline void ARMSX2_JIT_FlushCache(void* addr, size_t len) {
 // ============================================================================
 
 // Write code to JIT memory with automatic protection toggle
-#define ARMSX2_JIT_WRITE_CODE(dest, src, len) do { \
-    ARMSX2_JIT_EnableWrite(); \
-    memcpy(dest, src, len); \
-    ARMSX2_JIT_DisableWrite(); \
-    ARMSX2_JIT_FlushCache(dest, len); \
-} while(0)
+#define ARMSX2_JIT_WRITE_CODE(dest, src, len)                                                                          \
+    do {                                                                                                               \
+        ARMSX2_JIT_EnableWrite();                                                                                      \
+        memcpy(dest, src, len);                                                                                        \
+        ARMSX2_JIT_DisableWrite();                                                                                     \
+        ARMSX2_JIT_FlushCache(dest, len);                                                                              \
+    } while (0)
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -76,16 +76,16 @@ typedef NS_ENUM(NSInteger, JITStatus) {
 @interface JITManager : NSObject
 
 /// Shared singleton instance
-@property (class, readonly, nonatomic) JITManager *sharedManager;
+@property(class, readonly, nonatomic) JITManager *sharedManager;
 
 /// Current JIT status
-@property (readonly, nonatomic) JITStatus status;
+@property(readonly, nonatomic) JITStatus status;
 
 /// Whether JIT is currently enabled
-@property (readonly, nonatomic) BOOL isJITEnabled;
+@property(readonly, nonatomic) BOOL isJITEnabled;
 
 /// Total JIT memory allocated (in bytes)
-@property (readonly, nonatomic) size_t totalJITMemory;
+@property(readonly, nonatomic) size_t totalJITMemory;
 
 /// Initialize and check JIT availability on iOS 26
 - (BOOL)initializeJIT;
@@ -99,7 +99,7 @@ typedef NS_ENUM(NSInteger, JITStatus) {
 /// Allocate executable memory for JIT code
 /// @param size Size of memory to allocate in bytes
 /// @return Pointer to allocated executable memory, or NULL on failure
-- (void * _Nullable)allocateJITMemory:(size_t)size;
+- (void *_Nullable)allocateJITMemory:(size_t)size;
 
 /// Free JIT-allocated memory
 /// @param pointer Pointer to memory allocated by allocateJITMemory

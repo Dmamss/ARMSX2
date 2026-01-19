@@ -22,7 +22,66 @@ on:
   workflow_dispatch:
 
 jobs:
+  format-check:
+    name: Code Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Check clang-format version
+        run: clang-format --version
+
+      - name: Run clang-format check
+        run: |
+          cd ios
+          echo "Checking Objective-C/C++ files for formatting issues..."
+
+          # Find all .h, .m, .mm files
+          FILES=$(find ARMSX2 -type f \( -name "*.h" -o -name "*.m" -o -name "*.mm" \) ! -path "*/build/*")
+
+          # Check each file
+          FAILED=0
+          for FILE in $FILES; do
+            echo "Checking $FILE..."
+            if ! clang-format --dry-run --Werror "$FILE" 2>/dev/null; then
+              echo "ERROR: $FILE needs formatting"
+              echo "Run: clang-format -i $FILE"
+              FAILED=1
+            fi
+          done
+
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "Format check failed! Please run clang-format on the above files."
+            echo ""
+            echo "To fix all files at once:"
+            echo "  cd ios"
+            echo "  find ARMSX2 -type f \( -name '*.h' -o -name '*.m' -o -name '*.mm' \) ! -path '*/build/*' -exec clang-format -i {} \;"
+            exit 1
+          fi
+
+          echo "All files are properly formatted!"
+
+      - name: Generate format diff (if failed)
+        if: failure()
+        run: |
+          cd ios
+          FILES=$(find ARMSX2 -type f \( -name "*.h" -o -name "*.m" -o -name "*.mm" \) ! -path "*/build/*")
+          for FILE in $FILES; do
+            echo "=== Diff for $FILE ==="
+            clang-format "$FILE" | diff -u "$FILE" - || true
+            echo ""
+          done
+
   build:
+    needs: format-check
     runs-on: macos-14  # macOS 14 with Xcode 16+
 
     outputs:

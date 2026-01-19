@@ -20,25 +20,25 @@ typedef NS_ENUM(NSInteger, JITMode) {
 
 // JIT allocation info
 @interface JITAllocation : NSObject
-@property (nonatomic, readonly) void* rx_ptr;      // Read-Execute pointer
-@property (nonatomic, readonly) void* rw_ptr;      // Read-Write pointer
-@property (nonatomic, readonly) size_t size;       // Size of allocation
-@property (nonatomic, readonly) ptrdiff_t offset;  // Offset from RX to RW
+@property(nonatomic, readonly) void *rx_ptr;      // Read-Execute pointer
+@property(nonatomic, readonly) void *rw_ptr;      // Read-Write pointer
+@property(nonatomic, readonly) size_t size;       // Size of allocation
+@property(nonatomic, readonly) ptrdiff_t offset;  // Offset from RX to RW
 @end
 
 @interface JITManager_DolphinOS : NSObject
 
 // Singleton instance
-@property (class, readonly, nonatomic) JITManager_DolphinOS *sharedManager;
+@property(class, readonly, nonatomic) JITManager_DolphinOS *sharedManager;
 
 // Current JIT mode
-@property (readonly, nonatomic) JITMode mode;
+@property(readonly, nonatomic) JITMode mode;
 
 // Whether JIT is initialized
-@property (readonly, nonatomic) BOOL isInitialized;
+@property(readonly, nonatomic) BOOL isInitialized;
 
 // Total memory allocated
-@property (readonly, nonatomic) size_t totalAllocated;
+@property(readonly, nonatomic) size_t totalAllocated;
 
 // Initialize JIT with specific mode
 // mode: JIT mode to use (default: JITModeLuckNoTXM)
@@ -51,17 +51,17 @@ typedef NS_ENUM(NSInteger, JITMode) {
 // Allocate executable memory
 // size: Size in bytes to allocate
 // Returns: Pointer to RX (read-execute) region, or NULL on failure
-- (void * _Nullable)allocate:(size_t)size;
+- (void *_Nullable)allocate:(size_t)size;
 
 // Get writable pointer for RX pointer
 // rx_ptr: Read-execute pointer from allocate:
 // Returns: Writable pointer to same physical memory
-- (void * _Nullable)getWritablePointer:(void *)rx_ptr;
+- (void *_Nullable)getWritablePointer:(void *)rx_ptr;
 
 // Get allocation info
 // rx_ptr: Read-execute pointer
 // Returns: Allocation info or nil if not found
-- (JITAllocation * _Nullable)getAllocationInfo:(void *)rx_ptr;
+- (JITAllocation *_Nullable)getAllocationInfo:(void *)rx_ptr;
 
 // Free allocated memory
 // rx_ptr: Pointer from allocate:
@@ -89,19 +89,19 @@ extern "C" {
 #endif
 
 // Allocate executable memory
-void* ARMSX2_JIT_Allocate(size_t size);
+void *ARMSX2_JIT_Allocate(size_t size);
 
 // Get writable pointer
-void* ARMSX2_JIT_GetWritablePointer(void* rx_ptr);
+void *ARMSX2_JIT_GetWritablePointer(void *rx_ptr);
 
 // Write code (allocates writable pointer, writes, flushes cache)
-bool ARMSX2_JIT_WriteCode(void* rx_ptr, const void* source, size_t size);
+bool ARMSX2_JIT_WriteCode(void *rx_ptr, const void *source, size_t size);
 
 // Free memory
-void ARMSX2_JIT_Free(void* rx_ptr);
+void ARMSX2_JIT_Free(void *rx_ptr);
 
 // Flush instruction cache
-void ARMSX2_JIT_FlushCache(void* rx_ptr, size_t size);
+void ARMSX2_JIT_FlushCache(void *rx_ptr, size_t size);
 
 #ifdef __cplusplus
 }

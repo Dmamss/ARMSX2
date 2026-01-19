@@ -6,22 +6,22 @@
 //
 
 #import "EmulatorBridge.h"
-#import "JITManager_DolphinOS.h"
-#import "../Platform/PCSX2Wrapper.h"
 #import "../Platform/AudioIOS.h"
 #import "../Platform/InputIOS.h"
+#import "../Platform/PCSX2Wrapper.h"
+#import "JITManager_DolphinOS.h"
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
 
 @interface EmulatorBridge ()
-@property (readwrite, nonatomic) EmulatorState state;
-@property (readwrite, nonatomic) BOOL isInitialized;
-@property (readwrite, nonatomic) double currentFPS;
-@property (nonatomic) dispatch_queue_t emulatorQueue;
-@property (nonatomic) NSTimer *frameTimer;
-@property (nonatomic, strong) JITManager_DolphinOS *jitManager;
-@property (nonatomic) id<MTLDevice> metalDevice;
-@property (nonatomic) id<MTLCommandQueue> metalCommandQueue;
+@property(readwrite, nonatomic) EmulatorState state;
+@property(readwrite, nonatomic) BOOL isInitialized;
+@property(readwrite, nonatomic) double currentFPS;
+@property(nonatomic) dispatch_queue_t emulatorQueue;
+@property(nonatomic) NSTimer *frameTimer;
+@property(nonatomic, strong) JITManager_DolphinOS *jitManager;
+@property(nonatomic) id<MTLDevice> metalDevice;
+@property(nonatomic) id<MTLCommandQueue> metalCommandQueue;
 @end
 
 @implementation EmulatorBridge
@@ -29,9 +29,7 @@
 + (instancetype)sharedBridge {
     static EmulatorBridge *bridge = nil;
     static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        bridge = [[EmulatorBridge alloc] init];
-    });
+    dispatch_once(&onceToken, ^{ bridge = [[EmulatorBridge alloc] init]; });
     return bridge;
 }
 
@@ -66,7 +64,7 @@
         if (error) {
             *error = [NSError errorWithDomain:@"ARMSX2"
                                          code:1001
-                                     userInfo:@{NSLocalizedDescriptionKey: @"BIOS file not found"}];
+                                     userInfo:@{NSLocalizedDescriptionKey : @"BIOS file not found"}];
         }
         return NO;
     }
@@ -80,7 +78,7 @@
             if (error) {
                 *error = [NSError errorWithDomain:@"ARMSX2"
                                              code:1005
-                                         userInfo:@{NSLocalizedDescriptionKey: @"JIT initialization failed"}];
+                                         userInfo:@{NSLocalizedDescriptionKey : @"JIT initialization failed"}];
             }
             return NO;
         }
@@ -89,16 +87,17 @@
     }
 
     // Initialize PCSX2 core
-    dispatch_sync(self.emulatorQueue, ^{
+    dispatch_sync (self.emulatorQueue, ^{
         @try {
-            NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+            NSString *documentsPath =
+                [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
             NSString *dataPath = [documentsPath stringByAppendingPathComponent:@"ARMSX2"];
 
             // Create data directory if needed
             [[NSFileManager defaultManager] createDirectoryAtPath:dataPath
-                                        withIntermediateDirectories:YES
-                                        attributes:nil
-                                        error:nil];
+                                      withIntermediateDirectories:YES
+                                                       attributes:nil
+                                                            error:nil];
 
             NSLog(@"[ARMSX2-Bridge] Initializing PCSX2 wrapper...");
             self.isInitialized = PCSX2Wrapper::Initialize([biosPath UTF8String], [dataPath UTF8String]);
@@ -112,7 +111,8 @@
             NSLog(@"[ARMSX2-Bridge] Exception during initialization: %@", exception);
             self.isInitialized = NO;
         }
-    });
+    })
+        ;
 
     if (self.isInitialized && self.delegate) {
         [self.delegate emulatorStateDidChange:self.state];
@@ -126,7 +126,7 @@
         if (error) {
             *error = [NSError errorWithDomain:@"ARMSX2"
                                          code:1002
-                                     userInfo:@{NSLocalizedDescriptionKey: @"Emulator not initialized"}];
+                                     userInfo:@{NSLocalizedDescriptionKey : @"Emulator not initialized"}];
         }
         return NO;
     }
@@ -136,7 +136,7 @@
         if (error) {
             *error = [NSError errorWithDomain:@"ARMSX2"
                                          code:1003
-                                     userInfo:@{NSLocalizedDescriptionKey: @"Game file not found"}];
+                                     userInfo:@{NSLocalizedDescriptionKey : @"Game file not found"}];
         }
         return NO;
     }
@@ -145,7 +145,7 @@
     self.state = EmulatorStateLoading;
 
     __block BOOL success = NO;
-    dispatch_sync(self.emulatorQueue, ^{
+    dispatch_sync (self.emulatorQueue, ^{
         @try {
             success = PCSX2Wrapper::LoadGame([gamePath UTF8String]);
 
@@ -161,7 +161,8 @@
             success = NO;
             self.state = EmulatorStateError;
         }
-    });
+    })
+        ;
 
     if (self.delegate) {
         [self.delegate emulatorStateDidChange:self.state];
@@ -170,7 +171,7 @@
     if (!success && error) {
         *error = [NSError errorWithDomain:@"ARMSX2"
                                      code:1004
-                                 userInfo:@{NSLocalizedDescriptionKey: @"Failed to load game"}];
+                                 userInfo:@{NSLocalizedDescriptionKey : @"Failed to load game"}];
     }
 
     return success;
@@ -185,18 +186,20 @@
     NSLog(@"[ARMSX2-Bridge] Starting emulation");
     self.state = EmulatorStateRunning;
 
-    dispatch_async(self.emulatorQueue, ^{
+    dispatch_async (self.emulatorQueue, ^{
         PCSX2Wrapper::Start();
 
         // Start frame update timer
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.frameTimer = [NSTimer scheduledTimerWithTimeInterval:1.0/60.0
-                                                              target:self
-                                                            selector:@selector(updateFrame)
-                                                            userInfo:nil
-                                                             repeats:YES];
-        });
-    });
+        dispatch_async (dispatch_get_main_queue(), ^{
+            self.frameTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 / 60.0
+                                                               target:self
+                                                             selector:@selector(updateFrame)
+                                                             userInfo:nil
+                                                              repeats:YES];
+        })
+            ;
+    })
+        ;
 
     if (self.delegate) {
         [self.delegate emulatorStateDidChange:self.state];
@@ -211,15 +214,17 @@
     NSLog(@"[ARMSX2-Bridge] Pausing emulation");
     self.state = EmulatorStatePaused;
 
-    dispatch_async(self.emulatorQueue, ^{
+    dispatch_async (self.emulatorQueue, ^{
         PCSX2Wrapper::Pause();
 
         // Stop frame timer
-        dispatch_async(dispatch_get_main_queue(), ^{
+        dispatch_async (dispatch_get_main_queue(), ^{
             [self.frameTimer invalidate];
             self.frameTimer = nil;
-        });
-    });
+        })
+            ;
+    })
+        ;
 
     if (self.delegate) {
         [self.delegate emulatorStateDidChange:self.state];
@@ -234,9 +239,8 @@
 
     self.state = EmulatorStateStopped;
 
-    dispatch_async(self.emulatorQueue, ^{
-        PCSX2Wrapper::Stop();
-    });
+    dispatch_async (self.emulatorQueue, ^{ PCSX2Wrapper::Stop(); })
+        ;
 
     if (self.delegate) {
         [self.delegate emulatorStateDidChange:self.state];
@@ -246,18 +250,16 @@
 - (void)reset {
     NSLog(@"[ARMSX2-Bridge] Resetting emulation");
 
-    dispatch_async(self.emulatorQueue, ^{
-        PCSX2Wrapper::Reset();
-    });
+    dispatch_async (self.emulatorQueue, ^{ PCSX2Wrapper::Reset(); })
+        ;
 }
 
 - (BOOL)saveState:(NSInteger)slot {
     NSLog(@"[ARMSX2-Bridge] Saving state to slot %ld", (long)slot);
 
     __block BOOL success = NO;
-    dispatch_sync(self.emulatorQueue, ^{
-        success = PCSX2Wrapper::SaveState((int)slot);
-    });
+    dispatch_sync (self.emulatorQueue, ^{ success = PCSX2Wrapper::SaveState((int)slot); })
+        ;
 
     return success;
 }
@@ -266,15 +268,14 @@
     NSLog(@"[ARMSX2-Bridge] Loading state from slot %ld", (long)slot);
 
     __block BOOL success = NO;
-    dispatch_sync(self.emulatorQueue, ^{
-        success = PCSX2Wrapper::LoadState((int)slot);
-    });
+    dispatch_sync (self.emulatorQueue, ^{ success = PCSX2Wrapper::LoadState((int)slot); })
+        ;
 
     return success;
 }
 
 - (void)updateFrame {
-    dispatch_async(self.emulatorQueue, ^{
+    dispatch_async (self.emulatorQueue, ^{
         // Run one frame
         PCSX2Wrapper::RunFrame();
 
@@ -282,20 +283,21 @@
         self.currentFPS = PCSX2Wrapper::GetFPS();
 
         if (self.delegate) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [self.delegate emulatorDidUpdateFrame:self.currentFPS];
-            });
+            dispatch_async (dispatch_get_main_queue(), ^{ [self.delegate emulatorDidUpdateFrame:self.currentFPS]; })
+                ;
         }
-    });
+    })
+        ;
 }
 
 - (void)updateSettings:(NSDictionary *)settings {
     NSLog(@"[ARMSX2-Bridge] Updating settings: %@", settings);
 
-    dispatch_async(self.emulatorQueue, ^{
-        // Apply settings to PCSX2 core
-        // This would involve calling various PCSX2 configuration functions
-    });
+    dispatch_async (self.emulatorQueue, ^{
+                        // Apply settings to PCSX2 core
+                        // This would involve calling various PCSX2 configuration functions
+                    })
+        ;
 }
 
 - (NSDictionary *)getEmulatorInfo {
@@ -313,13 +315,13 @@
     }
 
     return @{
-        @"version": @"1.0.0",
-        @"core": @"PCSX2",
-        @"platform": @"iOS",
-        @"jit_enabled": @(self.jitManager.isInitialized),
-        @"jit_mode": jitMode,
-        @"jit_allocated": @(self.jitManager.totalAllocated),
-        @"metal_available": @(self.metalDevice != nil)
+        @"version" : @"1.0.0",
+        @"core" : @"PCSX2",
+        @"platform" : @"iOS",
+        @"jit_enabled" : @(self.jitManager.isInitialized),
+        @"jit_mode" : jitMode,
+        @"jit_allocated" : @(self.jitManager.totalAllocated),
+        @"metal_available" : @(self.metalDevice != nil)
     };
 }
 
@@ -351,7 +353,7 @@
     NSLog(@"[ARMSX2-Bridge] Button pressed: %@", button);
 
     // Map button name to PS2Button enum
-    PS2Button ps2Button = PS2Button_Cross; // Default
+    PS2Button ps2Button = PS2Button_Cross;  // Default
 
     if ([button isEqualToString:@"cross"] || [button isEqualToString:@"X"]) {
         ps2Button = PS2Button_Cross;

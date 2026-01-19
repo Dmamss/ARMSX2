@@ -23,13 +23,12 @@ struct ControllerState {
 };
 
 static std::map<int, ControllerState> s_controller_states;
-static std::vector<GCController*> s_controllers;
+static std::vector<GCController *> s_controllers;
 static std::mutex s_input_mutex;
 static bool s_initialized = false;
 
 // Controller connection notifications
-static void OnControllerConnected(GCController* controller)
-{
+static void OnControllerConnected(GCController *controller) {
     NSLog(@"[ARMSX2-Input] Controller connected: %@", controller.vendorName ?: @"Unknown");
 
     std::lock_guard<std::mutex> lock(s_input_mutex);
@@ -40,8 +39,7 @@ static void OnControllerConnected(GCController* controller)
     s_controller_states[index] = ControllerState{};
 }
 
-static void OnControllerDisconnected(GCController* controller)
-{
+static void OnControllerDisconnected(GCController *controller) {
     NSLog(@"[ARMSX2-Input] Controller disconnected: %@", controller.vendorName ?: @"Unknown");
 
     std::lock_guard<std::mutex> lock(s_input_mutex);
@@ -64,15 +62,15 @@ static void OnControllerDisconnected(GCController* controller)
 }
 
 // Map MFi controller input to PS2 buttons
-static void MapControllerInput(int index, GCController* controller)
-{
-    if (!controller) return;
+static void MapControllerInput(int index, GCController *controller) {
+    if (!controller)
+        return;
 
-    auto& state = s_controller_states[index];
+    auto &state = s_controller_states[index];
 
     // Extended gamepad (most modern controllers)
     if (controller.extendedGamepad) {
-        GCExtendedGamepad* gamepad = controller.extendedGamepad;
+        GCExtendedGamepad *gamepad = controller.extendedGamepad;
 
         // D-Pad
         state.buttons[PS2Button_DPad_Up] = gamepad.dpad.up.pressed;
@@ -81,10 +79,10 @@ static void MapControllerInput(int index, GCController* controller)
         state.buttons[PS2Button_DPad_Right] = gamepad.dpad.right.pressed;
 
         // Face buttons (map to PS2 buttons)
-        state.buttons[PS2Button_Cross] = gamepad.buttonA.pressed;      // A -> Cross
-        state.buttons[PS2Button_Circle] = gamepad.buttonB.pressed;     // B -> Circle
-        state.buttons[PS2Button_Square] = gamepad.buttonX.pressed;     // X -> Square
-        state.buttons[PS2Button_Triangle] = gamepad.buttonY.pressed;   // Y -> Triangle
+        state.buttons[PS2Button_Cross] = gamepad.buttonA.pressed;     // A -> Cross
+        state.buttons[PS2Button_Circle] = gamepad.buttonB.pressed;    // B -> Circle
+        state.buttons[PS2Button_Square] = gamepad.buttonX.pressed;    // X -> Square
+        state.buttons[PS2Button_Triangle] = gamepad.buttonY.pressed;  // Y -> Triangle
 
         // Shoulder buttons
         state.buttons[PS2Button_L1] = gamepad.leftShoulder.pressed;
@@ -120,7 +118,7 @@ static void MapControllerInput(int index, GCController* controller)
     }
     // Standard gamepad (older controllers)
     else if (controller.microGamepad) {
-        GCMicroGamepad* gamepad = controller.microGamepad;
+        GCMicroGamepad *gamepad = controller.microGamepad;
 
         state.buttons[PS2Button_Cross] = gamepad.buttonA.pressed;
         state.buttons[PS2Button_Circle] = gamepad.buttonX.pressed;
@@ -135,31 +133,31 @@ static void MapControllerInput(int index, GCController* controller)
 
 extern "C" {
 
-void iOS_Input_Initialize()
-{
-    if (s_initialized) return;
+void iOS_Input_Initialize() {
+    if (s_initialized)
+        return;
 
     NSLog(@"[ARMSX2-Input] Initializing iOS input system...");
 
     // Register for controller notifications
     [[NSNotificationCenter defaultCenter] addObserverForName:GCControllerDidConnectNotification
-                                                       object:nil
-                                                        queue:[NSOperationQueue mainQueue]
-                                                   usingBlock:^(NSNotification* note) {
-        GCController* controller = note.object;
-        OnControllerConnected(controller);
-    }];
+                                                      object:nil
+                                                       queue:[NSOperationQueue mainQueue]
+                                                  usingBlock:^(NSNotification *note) {
+                                                      GCController *controller = note.object;
+                                                      OnControllerConnected(controller);
+                                                  }];
 
     [[NSNotificationCenter defaultCenter] addObserverForName:GCControllerDidDisconnectNotification
-                                                       object:nil
-                                                        queue:[NSOperationQueue mainQueue]
-                                                   usingBlock:^(NSNotification* note) {
-        GCController* controller = note.object;
-        OnControllerDisconnected(controller);
-    }];
+                                                      object:nil
+                                                       queue:[NSOperationQueue mainQueue]
+                                                  usingBlock:^(NSNotification *note) {
+                                                      GCController *controller = note.object;
+                                                      OnControllerDisconnected(controller);
+                                                  }];
 
     // Add already connected controllers
-    for (GCController* controller in [GCController controllers]) {
+    for (GCController *controller in [GCController controllers]) {
         OnControllerConnected(controller);
     }
 
@@ -169,22 +167,17 @@ void iOS_Input_Initialize()
     }];
 
     s_initialized = true;
-    NSLog(@"[ARMSX2-Input] Input system initialized, %zu controller(s) connected",
-          s_controllers.size());
+    NSLog(@"[ARMSX2-Input] Input system initialized, %zu controller(s) connected", s_controllers.size());
 }
 
-void iOS_Input_Shutdown()
-{
-    if (!s_initialized) return;
+void iOS_Input_Shutdown() {
+    if (!s_initialized)
+        return;
 
     NSLog(@"[ARMSX2-Input] Shutting down input system...");
 
-    [[NSNotificationCenter defaultCenter] removeObserver:nil
-                                                    name:GCControllerDidConnectNotification
-                                                  object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:nil
-                                                    name:GCControllerDidDisconnectNotification
-                                                  object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:nil name:GCControllerDidConnectNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:nil name:GCControllerDidDisconnectNotification object:nil];
 
     [GCController stopWirelessControllerDiscovery];
 
@@ -196,9 +189,9 @@ void iOS_Input_Shutdown()
     NSLog(@"[ARMSX2-Input] Input system shut down");
 }
 
-void iOS_Input_Update()
-{
-    if (!s_initialized) return;
+void iOS_Input_Update() {
+    if (!s_initialized)
+        return;
 
     std::lock_guard<std::mutex> lock(s_input_mutex);
 
@@ -208,8 +201,7 @@ void iOS_Input_Update()
     }
 }
 
-void iOS_Input_SetButton(int controller, PS2Button button, bool pressed)
-{
+void iOS_Input_SetButton(int controller, PS2Button button, bool pressed) {
     std::lock_guard<std::mutex> lock(s_input_mutex);
 
     if (s_controller_states.count(controller)) {
@@ -217,8 +209,7 @@ void iOS_Input_SetButton(int controller, PS2Button button, bool pressed)
     }
 }
 
-void iOS_Input_SetLeftStick(int controller, float x, float y)
-{
+void iOS_Input_SetLeftStick(int controller, float x, float y) {
     std::lock_guard<std::mutex> lock(s_input_mutex);
 
     if (s_controller_states.count(controller)) {
@@ -227,8 +218,7 @@ void iOS_Input_SetLeftStick(int controller, float x, float y)
     }
 }
 
-void iOS_Input_SetRightStick(int controller, float x, float y)
-{
+void iOS_Input_SetRightStick(int controller, float x, float y) {
     std::lock_guard<std::mutex> lock(s_input_mutex);
 
     if (s_controller_states.count(controller)) {
@@ -237,8 +227,7 @@ void iOS_Input_SetRightStick(int controller, float x, float y)
     }
 }
 
-void iOS_Input_SetL2Trigger(int controller, float value)
-{
+void iOS_Input_SetL2Trigger(int controller, float value) {
     std::lock_guard<std::mutex> lock(s_input_mutex);
 
     if (s_controller_states.count(controller)) {
@@ -247,8 +236,7 @@ void iOS_Input_SetL2Trigger(int controller, float value)
     }
 }
 
-void iOS_Input_SetR2Trigger(int controller, float value)
-{
+void iOS_Input_SetR2Trigger(int controller, float value) {
     std::lock_guard<std::mutex> lock(s_input_mutex);
 
     if (s_controller_states.count(controller)) {
@@ -257,8 +245,7 @@ void iOS_Input_SetR2Trigger(int controller, float value)
     }
 }
 
-bool iOS_Input_GetButton(int controller, PS2Button button)
-{
+bool iOS_Input_GetButton(int controller, PS2Button button) {
     std::lock_guard<std::mutex> lock(s_input_mutex);
 
     if (s_controller_states.count(controller)) {
@@ -267,10 +254,9 @@ bool iOS_Input_GetButton(int controller, PS2Button button)
     return false;
 }
 
-int iOS_Input_GetControllerCount()
-{
+int iOS_Input_GetControllerCount() {
     std::lock_guard<std::mutex> lock(s_input_mutex);
     return (int)s_controllers.size();
 }
 
-} // extern "C"
+}  // extern "C"

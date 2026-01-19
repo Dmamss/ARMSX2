@@ -1,0 +1,226 @@
+---
+# clang-format configuration for ARMSX2 iOS
+# Based on Apple/LLVM style for Objective-C and Objective-C++
+# Compatible with clang-format 14+
+
+# Base style
+BasedOnStyle: LLVM
+# Language defaults to Cpp which supports C, C++, and Objective-C++
+# ObjC-specific rules are set via ObjC* options below
+
+# Indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+NamespaceIndentation: None
+
+# Column limits
+ColumnLimit: 120
+ReflowComments: true
+
+# Alignment
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: Right
+AlignConsecutiveAssignments: None
+AlignConsecutiveBitFields: None
+AlignConsecutiveDeclarations: None
+AlignConsecutiveMacros: None
+AlignEscapedNewlines: Right
+AlignOperands: Align
+AlignTrailingComments: true
+
+# Allow options
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: All
+
+# Always break
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: MultiLine
+
+# Bin pack
+BinPackArguments: true
+BinPackParameters: true
+
+# Brace wrapping - Apple/LLVM style
+BreakBeforeBraces: Attach
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+
+# Break options
+BreakBeforeBinaryOperators: None
+BreakBeforeConceptDeclarations: true
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+BreakStringLiterals: true
+
+# Constructor initializers
+ConstructorInitializerIndentWidth: 4
+Cpp11BracedListStyle: true
+
+# Empty lines
+EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+
+# Includes
+IncludeBlocks: Preserve
+SortIncludes: CaseInsensitive
+SortUsingDeclarations: true
+
+# Indentation options
+IndentAccessModifiers: false
+IndentCaseBlocks: false
+IndentCaseLabels: true
+IndentExternBlock: AfterExternBlock
+IndentGotoLabels: true
+IndentPPDirectives: None
+IndentRequiresClause: true
+IndentWrappedFunctionNames: false
+
+# Lambda body indentation
+LambdaBodyIndentation: Signature
+
+# Line breaks
+InsertBraces: false
+InsertTrailingCommas: None
+
+# Objective-C specific
+ObjCBinPackProtocolList: Auto
+ObjCBlockIndentWidth: 4
+ObjCBreakBeforeNestedBlockParam: true
+ObjCSpaceAfterProperty: false
+ObjCSpaceBeforeProtocolList: true
+
+# Penalties (lower = more likely to break)
+PenaltyBreakAssignment: 2
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 300
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakOpenParenthesis: 0
+PenaltyBreakString: 1000
+PenaltyBreakTemplateDeclaration: 10
+PenaltyExcessCharacter: 1000000
+PenaltyIndentedWhitespace: 0
+PenaltyReturnTypeOnItsOwnLine: 60
+
+# Pointer alignment - Apple style
+PointerAlignment: Right
+ReferenceAlignment: Pointer
+DerivePointerAlignment: false
+
+# Qualifiers
+QualifierAlignment: Leave
+
+# Requires clause
+RequiresClausePosition: OwnLine
+
+# Short namespace lines
+ShortNamespaceLines: 1
+
+# Space options
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
+SpaceAroundPointerQualifiers: Default
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCaseColon: false
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterForeachMacros: true
+  AfterFunctionDefinitionName: false
+  AfterFunctionDeclarationName: false
+  AfterIfMacros: true
+  AfterOverloadedOperator: false
+  AfterRequiresInClause: false
+  AfterRequiresInExpression: false
+  BeforeNonEmptyParentheses: false
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyBlock: false
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: Never
+SpacesInCStyleCastParentheses: false
+SpacesInConditionalStatement: false
+SpacesInContainerLiterals: true
+SpacesInLineCommentPrefix:
+  Minimum: 1
+  Maximum: -1
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# Standard
+Standard: c++20
+
+# Macros
+# Common iOS/Objective-C macros to preserve
+AttributeMacros:
+  - '__attribute__'
+  - '__unused'
+  - '__autoreleasing'
+  - '__strong'
+  - '__weak'
+  - '__unsafe_unretained'
+  - 'NS_ASSUME_NONNULL_BEGIN'
+  - 'NS_ASSUME_NONNULL_END'
+  - 'NS_DESIGNATED_INITIALIZER'
+  - 'NS_UNAVAILABLE'
+  - 'API_AVAILABLE'
+  - 'API_UNAVAILABLE'
+
+ForEachMacros:
+  - 'for_each'
+  - 'dispatch_async'
+  - 'dispatch_sync'
+
+IfMacros:
+  - 'IF'
+  - 'WHEN'
+
+StatementAttributeLikeMacros:
+  - 'Q_EMIT'
+
+StatementMacros:
+  - 'NSLog'
+  - 'NSAssert'
+
+# Disable formatting for certain code sections
+# Use // clang-format off and // clang-format on
+CommentPragmas: '^ (NOLINT|TODO|FIXME)'
+
+# Disable fixing namespace comments
+FixNamespaceComments: false
+...
