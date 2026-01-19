@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Debug Build Entitlements -->
+    <!-- More permissive for development and testing -->
+
+    <!-- JIT Compilation Entitlement -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!-- Debugging Entitlement (Debug builds only) -->
+    <!-- Enables debugger attachment and JIT workarounds -->
+    <key>get-task-allow</key>
+    <true/>
+
+    <!-- Dynamic Code Signing (Debug builds only) -->
+    <!-- Allows MAP_JIT for true RWX JIT -->
+    <!-- May cause Xcode deployment issues on some iOS versions -->
+    <key>dynamic-codesigning</key>
+    <true/>
+
+    <!-- Application Groups -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.net.armsx2</string>
+    </array>
+
+    <!-- Background Modes -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+
+    <!-- Skip Library Validation (Debug only) -->
+    <!-- Allows loading unsigned dynamic libraries -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

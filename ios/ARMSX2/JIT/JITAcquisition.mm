@@ -2,27 +2,19 @@
 //  JITAcquisition.mm
 //  ARMSX2
 //
-//  JIT permission acquisition implementation
-//  Critical for non-jailbroken device support
+//  JIT status detection and user guidance implementation
+//  Modern iOS 15-26 support
 //
 
 #import "JITAcquisition.h"
+#import "TXMDetector.h"
 #include <sys/sysctl.h>
 #include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
-// PTrace constants (not exposed in iOS headers)
-#define PT_TRACE_ME 0  // Child requests to be traced by parent
-#define PT_DETACH 11   // Stop tracing
-
-// PTrace syscall (not in iOS SDK headers)
-extern "C" int ptrace(int request, pid_t pid, caddr_t addr, int data);
+#import <UIKit/UIKit.h>
 
 @interface JITAcquisition ()
-@property(readwrite, nonatomic) JITAcquisitionStatus status;
-@property(readwrite, nonatomic) JITAcquisitionMethod method;
-@property(nonatomic) dispatch_queue_t acquisitionQueue;
+@property(readwrite, nonatomic) JITStatus status;
+@property(readwrite, nonatomic) JITEnablementMethod recommendedMethod;
 @end
 
 @implementation JITAcquisition
@@ -37,94 +29,226 @@ extern "C" int ptrace(int request, pid_t pid, caddr_t addr, int data);
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _status = JITAcquisitionStatusUnknown;
-        _method = JITAcquisitionMethodNone;
-        _acquisitionQueue = dispatch_queue_create("net.armsx2.jit.acquisition", DISPATCH_QUEUE_SERIAL);
+        _status = JITStatusUnknown;
+        _recommendedMethod = JITEnablementMethodNone;
+        [self checkJITStatus];
     }
     return self;
 }
 
+- (void)checkJITStatus {
+    NSLog(@"[JITAcquisition] Checking JIT status...");
+
+    // Check 1: Jailbroken device → JIT works natively
+    if ([JITAcquisition isJailbroken]) {
+        NSLog(@"[JITAcquisition] Device is jailbroken - JIT available natively");
+        _status = JITStatusNativeJailbreak;
+        _recommendedMethod = JITEnablementMethodNone;
+        return;
+    }
+
+    // Check 2: Debugger attached → JIT enabled
+    if ([JITAcquisition isDebuggerAttached]) {
+        NSLog(@"[JITAcquisition] Debugger attached - JIT enabled");
+        _status = JITStatusEnabled;
+        _recommendedMethod = JITEnablementMethodNone;
+        return;
+    }
+
+    // Check 3: JIT not enabled → Determine recommended method
+    NSLog(@"[JITAcquisition] JIT not enabled - determining recommended method");
+    _status = JITStatusDisabled;
+    _recommendedMethod = [self determineRecommendedMethod];
+
+    NSLog(@"[JITAcquisition] Recommended method: %@", [self methodDescription]);
+}
+
+- (JITEnablementMethod)determineRecommendedMethod {
+    NSInteger iOSVersion = [TXMDetector iOSMajorVersion];
+    BOOL hasTXM = [TXMDetector hasTXMSupport];
+
+    // iOS 26 + TXM → StikDebug required
+    if (iOSVersion >= 26 && hasTXM) {
+        NSLog(@"[JITAcquisition] iOS 26 + TXM detected → StikDebug required");
+        return JITEnablementMethodStikDebug;
+    }
+
+    // iOS 17.4+ → Prefer JitStreamer (no computer after setup)
+    if (iOSVersion >= 17) {
+        NSLog(@"[JITAcquisition] iOS 17+ detected → JitStreamer recommended");
+        return JITEnablementMethodJitStreamer;
+    }
+
+    // iOS 15-16 → AltKit (most popular method)
+    NSLog(@"[JITAcquisition] iOS 15-16 detected → AltKit recommended");
+    return JITEnablementMethodAltKit;
+}
+
 - (NSString *)statusDescription {
     switch (self.status) {
-        case JITAcquisitionStatusUnknown:
+        case JITStatusUnknown:
             return @"JIT status unknown";
-        case JITAcquisitionStatusAcquiring:
-            return @"Acquiring JIT permissions...";
-        case JITAcquisitionStatusSuccess:
-            return [NSString stringWithFormat:@"JIT acquired via %@", [self methodDescription]];
-        case JITAcquisitionStatusFailed:
-            return @"Failed to acquire JIT";
-        case JITAcquisitionStatusNotNeeded:
-            return @"JIT already available";
+        case JITStatusNativeJailbreak:
+            return @"JIT enabled (jailbroken device)";
+        case JITStatusEnabled:
+            return @"JIT enabled via debugger";
+        case JITStatusDisabled:
+            return @"JIT not enabled - user action required";
     }
 }
 
 - (NSString *)methodDescription {
-    switch (self.method) {
-        case JITAcquisitionMethodNone:
-            return @"None";
-        case JITAcquisitionMethodPTrace:
-            return @"PTrace";
-        case JITAcquisitionMethodDebugger:
-            return @"Debugger";
-        case JITAcquisitionMethodJailbreak:
-            return @"Jailbreak";
+    switch (self.recommendedMethod) {
+        case JITEnablementMethodNone:
+            return @"No action needed";
+        case JITEnablementMethodStikDebug:
+            return @"StikDebug (required for iOS 26 TXM)";
+        case JITEnablementMethodJitStreamer:
+            return @"JitStreamer (VPN-based, no computer needed)";
+        case JITEnablementMethodAltKit:
+            return @"AltKit (automatic with AltServer)";
+        case JITEnablementMethodSideJITServer:
+            return @"SideJITServer (computer-based)";
+        case JITEnablementMethodXcode:
+            return @"Xcode Debugger";
     }
 }
 
-- (void)acquireJITWithCompletion:(void (^)(BOOL, NSError *))completion {
-    if (self.status == JITAcquisitionStatusSuccess || self.status == JITAcquisitionStatusNotNeeded) {
-        NSLog(@"[JITAcquisition] JIT already acquired");
-        if (completion)
-            completion(YES, nil);
-        return;
-    }
-
-    dispatch_async (self.acquisitionQueue, ^{
-        self.status = JITAcquisitionStatusAcquiring;
-
-        NSLog(@"[JITAcquisition] Starting JIT acquisition...");
-
-        // Method 1: Check if already debugged (Xcode, lldb, etc.)
-        if ([JITAcquisition isProcessDebugged]) {
-            NSLog(@"[JITAcquisition] Process is already debugged (JIT available)");
-            self.status = JITAcquisitionStatusNotNeeded;
-            self.method = JITAcquisitionMethodDebugger;
-            dispatch_async (dispatch_get_main_queue(), ^{
-                if (completion)
-                    completion(YES, nil);
-            })
-                ;
-            return;
-        }
-
-        // Method 2: Try PTrace fork method (DolphinOS approach)
-        NSError *error = nil;
-        if ([JITAcquisition acquireJITViaPTrace:&error]) {
-            NSLog(@"[JITAcquisition] Successfully acquired JIT via PTrace");
-            self.status = JITAcquisitionStatusSuccess;
-            self.method = JITAcquisitionMethodPTrace;
-            dispatch_async (dispatch_get_main_queue(), ^{
-                if (completion)
-                    completion(YES, nil);
-            })
-                ;
-            return;
-        }
-
-        // Failed all methods
-        NSLog(@"[JITAcquisition] Failed to acquire JIT: %@", error);
-        self.status = JITAcquisitionStatusFailed;
-        dispatch_async (dispatch_get_main_queue(), ^{
-            if (completion)
-                completion(NO, error);
-        })
-            ;
-    })
-        ;
+- (NSString *)userInstructions {
+    return [self getDetailedInstructions];
 }
 
-+ (BOOL)isProcessDebugged {
+- (NSString *)getDetailedInstructions {
+    if (self.status == JITStatusNativeJailbreak) {
+        return @"Your device is jailbroken. JIT works natively without any setup.";
+    }
+
+    if (self.status == JITStatusEnabled) {
+        return @"JIT is already enabled for this session!";
+    }
+
+    // Generate instructions based on recommended method
+    switch (self.recommendedMethod) {
+        case JITEnablementMethodStikDebug:
+            return [self getStikDebugInstructions];
+        case JITEnablementMethodJitStreamer:
+            return [self getJitStreamerInstructions];
+        case JITEnablementMethodAltKit:
+            return [self getAltKitInstructions];
+        case JITEnablementMethodSideJITServer:
+            return [self getSideJITServerInstructions];
+        case JITEnablementMethodXcode:
+            return [self getXcodeInstructions];
+        default:
+            return @"JIT enablement method unavailable.";
+    }
+}
+
+- (NSString *)getStikDebugInstructions {
+    return @"Enable JIT using StikDebug:\n\n"
+           @"1. Download StikDebug 2.3.0+ from App Store or stikdebug.xyz\n"
+           @"2. Pair your device using JitterbugPair (one-time, requires computer)\n"
+           @"3. Open Settings → VPN and approve StikDebug VPN profile\n"
+           @"4. Launch StikDebug and select ARMSX2 from the list\n"
+           @"5. JIT will be enabled for this session\n\n"
+           @"Note: Required for iOS 26 devices with TXM (A15+/M2+ chips)\n\n"
+           @"Guide: https://stikdebug.xyz/";
+}
+
+- (NSString *)getJitStreamerInstructions {
+    return @"Enable JIT using JitStreamer:\n\n"
+           @"1. Install JitStreamer VPN profile (one-time setup)\n"
+           @"2. Connect to WiFi\n"
+           @"3. Enable JitStreamer VPN in Settings\n"
+           @"4. Run JitStreamer Siri Shortcut\n"
+           @"5. Select ARMSX2 from the app list\n"
+           @"6. JIT will be enabled for this session\n\n"
+           @"Advantages:\n"
+           @"✓ No computer needed after setup\n"
+           @"✓ Works over WiFi or cellular\n"
+           @"✓ Fast (~5 seconds)\n\n"
+           @"Guide: https://jitstreamer.com/";
+}
+
+- (NSString *)getAltKitInstructions {
+    return @"Enable JIT using AltStore:\n\n"
+           @"1. Install ARMSX2 via AltStore\n"
+           @"2. Ensure AltServer is running on your computer\n"
+           @"3. Connect to the same WiFi as your computer\n"
+           @"4. Launch ARMSX2 - JIT will auto-enable\n\n"
+           @"Advantages:\n"
+           @"✓ Automatic (no manual steps)\n"
+           @"✓ Most popular sideloading method\n"
+           @"✓ Works on iOS 15-26 (non-TXM)\n\n"
+           @"Note: Requires AltServer running on computer\n\n"
+           @"Download: https://altstore.io/";
+}
+
+- (NSString *)getSideJITServerInstructions {
+    return @"Enable JIT using SideJITServer:\n\n"
+           @"1. Download SideJITServer from GitHub\n"
+           @"2. Run SideJITServer on your computer (same WiFi)\n"
+           @"3. Launch ARMSX2 on your device\n"
+           @"4. Select ARMSX2 from SideJITServer list\n"
+           @"5. JIT will be enabled for this session\n\n"
+           @"Note: Works on iOS 17.0-18.3\n\n"
+           @"GitHub: https://github.com/nythepegasus/SideJITServer";
+}
+
+- (NSString *)getXcodeInstructions {
+    return @"Enable JIT using Xcode:\n\n"
+           @"1. Connect device to Mac via USB\n"
+           @"2. Open Xcode and select your device\n"
+           @"3. Go to Debug → Attach to Process\n"
+           @"4. Select ARMSX2 from the process list\n"
+           @"5. JIT will be enabled while debugger is attached\n\n"
+           @"Note: Does not work on iOS 26 TXM devices (A15+/M2+)";
+}
+
+#pragma mark - Detection Methods
+
++ (BOOL)isJailbroken {
+    // Check 1: Common jailbreak files
+    NSArray *jailbreakPaths = @[
+        @"/Applications/Cydia.app", @"/Library/MobileSubstrate/MobileSubstrate.dylib", @"/bin/bash", @"/usr/sbin/sshd",
+        @"/etc/apt", @"/private/var/lib/apt/", @"/private/var/lib/cydia", @"/private/var/stash"
+    ];
+
+    for (NSString *path in jailbreakPaths) {
+        if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+            NSLog(@"[JITAcquisition] Jailbreak detected (found %@)", path);
+            return YES;
+        }
+    }
+
+    // Check 2: Can write outside sandbox?
+    NSError *error;
+    NSString *testString = @"jailbreak test";
+    [testString writeToFile:@"/private/jailbreak_test.txt" atomically:YES encoding:NSUTF8StringEncoding error:&error];
+
+    if (!error) {
+        [[NSFileManager defaultManager] removeItemAtPath:@"/private/jailbreak_test.txt" error:nil];
+        NSLog(@"[JITAcquisition] Jailbreak detected (can write to /private)");
+        return YES;
+    }
+
+    // Check 3: Cydia URL scheme
+    if ([[UIApplication sharedApplication] canOpenURL:[NSURL URLWithString:@"cydia://"]]) {
+        NSLog(@"[JITAcquisition] Jailbreak detected (Cydia URL scheme)");
+        return YES;
+    }
+
+    // Check 4: stat() on restricted files
+    struct stat stat_info;
+    if (stat("/Applications", &stat_info) == 0) {
+        NSLog(@"[JITAcquisition] Jailbreak detected (can stat /Applications)");
+        return YES;
+    }
+
+    return NO;
+}
+
++ (BOOL)isDebuggerAttached {
     // Use sysctl to check if P_TRACED flag is set
     int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
     struct kinfo_proc info = {0};
@@ -136,102 +260,25 @@ extern "C" int ptrace(int request, pid_t pid, caddr_t addr, int data);
     }
 
     // P_TRACED = 0x00000800 (process is being traced)
-    BOOL isDebugged = (info.kp_proc.p_flag & 0x00000800) != 0;
+    BOOL isTraced = (info.kp_proc.p_flag & 0x00000800) != 0;
 
-#ifdef DEBUG
-    NSLog(@"[JITAcquisition] Process debug status: %@", isDebugged ? @"YES" : @"NO");
-#endif
+    if (isTraced) {
+        NSLog(@"[JITAcquisition] Debugger attached (CS_DEBUGGED flag set)");
+    }
 
-    return isDebugged;
+    return isTraced;
 }
 
-+ (BOOL)acquireJITViaPTrace:(NSError **)error {
-    NSLog(@"[JITAcquisition] Attempting PTrace JIT acquisition...");
++ (BOOL)requiresStikDebug {
+    // iOS 26 + TXM → StikDebug required
+    NSInteger iOSVersion = [TXMDetector iOSMajorVersion];
+    BOOL hasTXM = [TXMDetector hasTXMSupport];
 
-    // Fork a child process
-    pid_t pid = fork();
-
-    if (pid < 0) {
-        // Fork failed
-        NSLog(@"[JITAcquisition] fork() failed: %s", strerror(errno));
-        if (error) {
-            *error = [NSError
-                errorWithDomain:NSPOSIXErrorDomain
-                           code:errno
-                       userInfo:@{
-                           NSLocalizedDescriptionKey : [NSString stringWithFormat:@"fork() failed: %s", strerror(errno)]
-                       }];
-        }
-        return NO;
+    if (iOSVersion >= 26 && hasTXM) {
+        NSLog(@"[JITAcquisition] iOS 26 + TXM detected → StikDebug 2.3.0+ required");
+        return YES;
     }
 
-    if (pid == 0) {
-        // ===== CHILD PROCESS =====
-        NSLog(@"[JITAcquisition] Child process (pid=%d): Calling ptrace(PT_TRACE_ME)...", getpid());
-
-        // Request to be traced by parent
-        // This is the key: child requests tracing, parent inherits JIT permissions
-        int ret = ptrace(PT_TRACE_ME, 0, NULL, 0);
-
-        if (ret != 0) {
-            NSLog(@"[JITAcquisition] Child: ptrace(PT_TRACE_ME) failed: %s", strerror(errno));
-            _exit(1);  // Exit with error
-        }
-
-        NSLog(@"[JITAcquisition] Child: ptrace succeeded, exiting normally...");
-        _exit(0);  // Exit successfully
-    }
-
-    // ===== PARENT PROCESS =====
-    NSLog(@"[JITAcquisition] Parent process (pid=%d): Waiting for child (pid=%d)...", getpid(), pid);
-
-    int status = 0;
-    pid_t wait_result = waitpid(pid, &status, 0);
-
-    if (wait_result < 0) {
-        NSLog(@"[JITAcquisition] waitpid() failed: %s", strerror(errno));
-        if (error) {
-            *error = [NSError errorWithDomain:NSPOSIXErrorDomain
-                                         code:errno
-                                     userInfo:@{
-                                         NSLocalizedDescriptionKey :
-                                             [NSString stringWithFormat:@"waitpid() failed: %s", strerror(errno)]
-                                     }];
-        }
-        return NO;
-    }
-
-    // Check child exit status
-    if (WIFEXITED(status)) {
-        int exit_code = WEXITSTATUS(status);
-        NSLog(@"[JITAcquisition] Child exited with code: %d", exit_code);
-
-        if (exit_code == 0) {
-            // Success! Parent process now has JIT permissions inherited from traced child
-            NSLog(@"[JITAcquisition] PTrace succeeded - parent inherited JIT permissions");
-            NSLog(@"[JITAcquisition] Parent can now allocate JIT memory");
-            return YES;
-        } else {
-            NSLog(@"[JITAcquisition] Child failed (exit code %d)", exit_code);
-            if (error) {
-                *error = [NSError errorWithDomain:@"JITAcquisition"
-                                             code:1001
-                                         userInfo:@{
-                                             NSLocalizedDescriptionKey : [NSString
-                                                 stringWithFormat:@"PTrace child failed with exit code %d", exit_code]
-                                         }];
-            }
-            return NO;
-        }
-    }
-
-    // Child did not exit normally (signal, etc.)
-    NSLog(@"[JITAcquisition] Child did not exit normally (status=0x%x)", status);
-    if (error) {
-        *error = [NSError errorWithDomain:@"JITAcquisition"
-                                     code:1002
-                                 userInfo:@{NSLocalizedDescriptionKey : @"PTrace child did not exit normally"}];
-    }
     return NO;
 }
 

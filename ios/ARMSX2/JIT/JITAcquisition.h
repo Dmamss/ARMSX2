@@ -2,56 +2,103 @@
 //  JITAcquisition.h
 //  ARMSX2
 //
-//  JIT permission acquisition for non-jailbroken iOS devices
-//  Based on DolphinOS PTrace method
+//  JIT status detection and user guidance
+//  Modern iOS 15-26 JIT enablement support
 //
 
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-typedef NS_ENUM(NSInteger, JITAcquisitionMethod) {
-    JITAcquisitionMethodNone,      // No acquisition attempted
-    JITAcquisitionMethodPTrace,    // PTrace fork method (primary)
-    JITAcquisitionMethodDebugger,  // Already debugged (Xcode)
-    JITAcquisitionMethodJailbreak  // Jailbroken device
+/// JIT status for current app session
+typedef NS_ENUM(NSInteger, JITStatus) {
+    JITStatusUnknown,          // Status not yet checked
+    JITStatusNativeJailbreak,  // Jailbroken device (JIT works natively)
+    JITStatusEnabled,          // JIT enabled via debugger/external tool
+    JITStatusDisabled          // JIT not enabled (user action required)
 };
 
-typedef NS_ENUM(NSInteger, JITAcquisitionStatus) {
-    JITAcquisitionStatusUnknown,    // Not attempted yet
-    JITAcquisitionStatusAcquiring,  // In progress
-    JITAcquisitionStatusSuccess,    // Successfully acquired
-    JITAcquisitionStatusFailed,     // Failed to acquire
-    JITAcquisitionStatusNotNeeded   // Already have JIT (jailbreak/debugger)
+/// Recommended JIT enablement method based on iOS version and device
+typedef NS_ENUM(NSInteger, JITEnablementMethod) {
+    JITEnablementMethodNone,           // No method needed (jailbroken)
+    JITEnablementMethodStikDebug,      // StikDebug (iOS 17.4+, required for iOS 26 TXM)
+    JITEnablementMethodJitStreamer,    // JitStreamer (VPN-based, no computer after setup)
+    JITEnablementMethodAltKit,         // AltKit (automatic when AltServer present)
+    JITEnablementMethodSideJITServer,  // SideJITServer (computer-based, iOS 17.0-18.3)
+    JITEnablementMethodXcode           // Xcode debugger (iOS 15-25, non-TXM only)
 };
 
+/**
+ * JIT status detection and user guidance for iOS 15-26
+ *
+ * This class does NOT attempt to enable JIT itself (ptrace was patched in iOS 14).
+ * Instead, it:
+ * - Detects current JIT status (CS_DEBUGGED flag)
+ * - Detects device capabilities (jailbreak, iOS version, TXM)
+ * - Recommends appropriate JIT enablement method
+ * - Provides user-facing instructions
+ */
 @interface JITAcquisition : NSObject
 
-// Singleton instance
+/// Shared singleton instance
 @property(class, readonly, nonatomic) JITAcquisition *sharedInstance;
 
-// Current acquisition status
-@property(readonly, nonatomic) JITAcquisitionStatus status;
+/// Current JIT status
+@property(readonly, nonatomic) JITStatus status;
 
-// Method used to acquire JIT
-@property(readonly, nonatomic) JITAcquisitionMethod method;
+/// Recommended JIT enablement method for this device
+@property(readonly, nonatomic) JITEnablementMethod recommendedMethod;
 
-// Human-readable status description
+/// Human-readable status description
 @property(readonly, nonatomic) NSString *statusDescription;
 
-// Attempt to acquire JIT permissions
-// Tries multiple methods in order:
-//   1. Check if already debugged
-//   2. Try PTrace fork method
-// completion: Called with YES if successful, NO if failed
-- (void)acquireJITWithCompletion:(void (^)(BOOL success, NSError *_Nullable error))completion;
+/// Human-readable method description
+@property(readonly, nonatomic) NSString *methodDescription;
 
-// Check if process is already debugged (has JIT permissions)
-+ (BOOL)isProcessDebugged;
+/// Detailed user instructions for enabling JIT
+@property(readonly, nonatomic) NSString *userInstructions;
 
-// PTrace method: Fork child with PT_TRACE_ME
-// Parent inherits JIT permissions from traced child
-+ (BOOL)acquireJITViaPTrace:(NSError *_Nullable *_Nullable)error;
+/**
+ * Check current JIT status
+ *
+ * This checks:
+ * 1. Jailbreak status
+ * 2. CS_DEBUGGED flag (debugger attached)
+ * 3. Device capabilities (iOS version, TXM)
+ *
+ * Does NOT attempt to enable JIT.
+ */
+- (void)checkJITStatus;
+
+/**
+ * Check if device is jailbroken
+ *
+ * Jailbroken devices have native JIT support.
+ */
++ (BOOL)isJailbroken;
+
+/**
+ * Check if process has CS_DEBUGGED flag set
+ *
+ * This flag indicates a debugger is attached (Xcode, StikDebug, SideJITServer, etc.)
+ * When set, the process can allocate JIT memory.
+ */
++ (BOOL)isDebuggerAttached;
+
+/**
+ * Check if device requires StikDebug for JIT
+ *
+ * Returns YES for:
+ * - iOS 26+ with TXM (A15+/M2+ chips)
+ *
+ * Xcode debugger no longer works on these devices.
+ */
++ (BOOL)requiresStikDebug;
+
+/**
+ * Get recommended method description with instructions
+ */
+- (NSString *)getDetailedInstructions;
 
 @end
 

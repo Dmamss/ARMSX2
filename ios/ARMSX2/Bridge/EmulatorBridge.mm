@@ -70,42 +70,23 @@
         return NO;
     }
 
-    // Acquire JIT permissions before initializing JIT manager
-    NSLog(@"[ARMSX2-Bridge] Acquiring JIT permissions...");
-    dispatch_semaphore_t jitSemaphore = dispatch_semaphore_create(0);
-    __block BOOL jitAcquired = NO;
-    __block NSError *jitError = nil;
+    // Check JIT status (detection only, no acquisition attempt)
+    JITAcquisition *jitChecker = [JITAcquisition sharedInstance];
+    [jitChecker checkJITStatus];
 
-    [[JITAcquisition sharedInstance] acquireJITWithCompletion:^(BOOL success, NSError *err) {
-        jitAcquired = success;
-        jitError = err;
-        dispatch_semaphore_signal(jitSemaphore);
-    }];
+    NSLog(@"[ARMSX2-Bridge] JIT Status: %@", jitChecker.statusDescription);
 
-    // Wait for JIT acquisition to complete (max 5 seconds)
-    dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC);
-    if (dispatch_semaphore_wait(jitSemaphore, timeout) != 0) {
-        NSLog(@"[ARMSX2-Bridge] JIT acquisition timed out");
-        if (error) {
-            *error = [NSError errorWithDomain:@"ARMSX2"
-                                         code:1006
-                                     userInfo:@{NSLocalizedDescriptionKey : @"JIT acquisition timed out"}];
-        }
-        return NO;
+    // Warn if JIT is not enabled (but don't block initialization)
+    if (jitChecker.status == JITStatusDisabled) {
+        NSLog(@"[ARMSX2-Bridge] ⚠️  WARNING: JIT is not enabled!");
+        NSLog(@"[ARMSX2-Bridge] Recommended method: %@", jitChecker.methodDescription);
+        NSLog(@"[ARMSX2-Bridge] See Settings → JIT Information for detailed instructions");
+
+        // Note: We don't fail initialization - user can still explore the app
+        // and see JIT enablement instructions in Settings
+    } else if (jitChecker.status == JITStatusEnabled || jitChecker.status == JITStatusNativeJailbreak) {
+        NSLog(@"[ARMSX2-Bridge] ✅  JIT is enabled and ready!");
     }
-
-    if (!jitAcquired) {
-        NSLog(@"[ARMSX2-Bridge] Failed to acquire JIT permissions: %@", jitError);
-        if (error) {
-            *error = jitError
-                         ?: [NSError errorWithDomain:@"ARMSX2"
-                                                code:1007
-                                            userInfo:@{NSLocalizedDescriptionKey : @"JIT acquisition failed"}];
-        }
-        return NO;
-    }
-
-    NSLog(@"[ARMSX2-Bridge] JIT permissions acquired: %@", [[JITAcquisition sharedInstance] statusDescription]);
 
     // Initialize DolphinOS JIT (LuckNoTXM mode - best balance of performance and simplicity)
     if (![self.jitManager initializeWithMode:JITModeLuckNoTXM]) {
@@ -352,9 +333,9 @@
             break;
     }
 
-    // Get JIT acquisition status
-    JITAcquisition *jitAcquisition = [JITAcquisition sharedInstance];
-    NSString *jitStatus = [jitAcquisition statusDescription];
+    // Get JIT status
+    JITAcquisition *jitChecker = [JITAcquisition sharedInstance];
+    [jitChecker checkJITStatus];
 
     return @{
         @"version" : @"1.0.0",
@@ -363,7 +344,9 @@
         @"jit_enabled" : @(self.jitManager.isInitialized),
         @"jit_mode" : jitMode,
         @"jit_allocated" : @(self.jitManager.totalAllocated),
-        @"jit_status" : jitStatus,
+        @"jit_status" : jitChecker.statusDescription,
+        @"jit_recommended_method" : jitChecker.methodDescription,
+        @"jit_instructions" : jitChecker.userInstructions,
         @"metal_available" : @(self.metalDevice != nil)
     };
 }

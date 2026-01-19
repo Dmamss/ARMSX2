@@ -526,13 +526,28 @@ struct SettingsView: View {
 
                 Section(header: Text("JIT Information")) {
                     let info = EmulatorBridge.shared().getEmulatorInfo() as? [String: Any]
-                    let jitEnabled = info?["jit_enabled"] as? Bool ?? false
+                    let jitStatus = info?["jit_status"] as? String ?? "Unknown"
+                    let jitEnabled = jitStatus.contains("enabled")
 
                     HStack {
-                        Text("JIT Status")
+                        Text("Status")
                         Spacer()
-                        Text(info?["jit_status"] as? String ?? "Unknown")
-                            .foregroundColor(jitEnabled ? .green : .red)
+                        Text(jitStatus)
+                            .font(.caption)
+                            .foregroundColor(jitEnabled ? .green : .orange)
+                            .multilineTextAlignment(.trailing)
+                    }
+
+                    if let recommendedMethod = info?["jit_recommended_method"] as? String,
+                       !jitEnabled {
+                        HStack {
+                            Text("Recommended")
+                            Spacer()
+                            Text(recommendedMethod)
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .multilineTextAlignment(.trailing)
+                        }
                     }
 
                     if jitEnabled {
@@ -541,21 +556,18 @@ struct SettingsView: View {
                             .foregroundColor(.gray)
 
                         let allocated = info?["jit_allocated"] as? UInt64 ?? 0
-                        Text("Allocated: \(formatBytes(allocated))")
-                            .font(.caption)
-                            .foregroundColor(.gray)
+                        if allocated > 0 {
+                            Text("Allocated: \(formatBytes(allocated))")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
                     }
-                }
 
-                Section(header: Text("Graphics")) {
-                    let info = EmulatorBridge.shared().getEmulatorInfo() as? [String: Any]
-                    let metalAvailable = info?["metal_available"] as? Bool ?? false
-
-                    HStack {
-                        Text("Metal")
-                        Spacer()
-                        Text(metalAvailable ? "Available" : "Not Available")
-                            .foregroundColor(metalAvailable ? .green : .red)
+                    if let instructions = info?["jit_instructions"] as? String {
+                        NavigationLink(destination: JITInstructionsView(instructions: instructions)) {
+                            Text("How to Enable JIT")
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
             }
@@ -578,6 +590,30 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+// JIT Instructions View
+struct JITInstructionsView: View {
+    let instructions: String
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("How to Enable JIT")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+
+                Text(instructions)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer()
+            }
+            .padding()
+        }
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
