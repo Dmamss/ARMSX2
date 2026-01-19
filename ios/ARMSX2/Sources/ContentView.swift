@@ -471,6 +471,22 @@ struct SettingsView: View {
     @State private var biosPath = ""
     @State private var showFilePicker = false
 
+    private func formatBytes(_ bytes: UInt64) -> String {
+        let kb = Double(bytes) / 1024.0
+        let mb = kb / 1024.0
+        let gb = mb / 1024.0
+
+        if gb >= 1.0 {
+            return String(format: "%.2f GB", gb)
+        } else if mb >= 1.0 {
+            return String(format: "%.2f MB", mb)
+        } else if kb >= 1.0 {
+            return String(format: "%.2f KB", kb)
+        } else {
+            return "\(bytes) bytes"
+        }
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -505,7 +521,42 @@ struct SettingsView: View {
                     let info = EmulatorBridge.shared().getEmulatorInfo() as? [String: Any]
                     Text("Version: \(info?["version"] as? String ?? "Unknown")")
                     Text("Core: \(info?["core"] as? String ?? "Unknown")")
-                    Text("JIT Status: \(info?["jit_status"] as? String ?? "Unknown")")
+                    Text("Platform: \(info?["platform"] as? String ?? "Unknown")")
+                }
+
+                Section(header: Text("JIT Information")) {
+                    let info = EmulatorBridge.shared().getEmulatorInfo() as? [String: Any]
+                    let jitEnabled = info?["jit_enabled"] as? Bool ?? false
+
+                    HStack {
+                        Text("JIT Status")
+                        Spacer()
+                        Text(info?["jit_status"] as? String ?? "Unknown")
+                            .foregroundColor(jitEnabled ? .green : .red)
+                    }
+
+                    if jitEnabled {
+                        Text("Mode: \(info?["jit_mode"] as? String ?? "Unknown")")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+
+                        let allocated = info?["jit_allocated"] as? UInt64 ?? 0
+                        Text("Allocated: \(formatBytes(allocated))")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+
+                Section(header: Text("Graphics")) {
+                    let info = EmulatorBridge.shared().getEmulatorInfo() as? [String: Any]
+                    let metalAvailable = info?["metal_available"] as? Bool ?? false
+
+                    HStack {
+                        Text("Metal")
+                        Spacer()
+                        Text(metalAvailable ? "Available" : "Not Available")
+                            .foregroundColor(metalAvailable ? .green : .red)
+                    }
                 }
             }
             .navigationTitle("Settings")
