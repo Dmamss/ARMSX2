@@ -6,7 +6,7 @@
 //
 
 #import "EmulatorBridge.h"
-#import "JITManager.h"
+#import "JITManager_DolphinOS.h"
 #import "../Platform/PCSX2Wrapper.h"
 #import "../Platform/AudioIOS.h"
 #import "../Platform/InputIOS.h"
@@ -19,7 +19,7 @@
 @property (readwrite, nonatomic) double currentFPS;
 @property (nonatomic) dispatch_queue_t emulatorQueue;
 @property (nonatomic) NSTimer *frameTimer;
-@property (nonatomic, strong) JITManager *jitManager;
+@property (nonatomic, strong) JITManager_DolphinOS *jitManager;
 @property (nonatomic) id<MTLDevice> metalDevice;
 @property (nonatomic) id<MTLCommandQueue> metalCommandQueue;
 @end
@@ -42,7 +42,7 @@
         _isInitialized = NO;
         _currentFPS = 0.0;
         _emulatorQueue = dispatch_queue_create("net.armsx2.emulator", DISPATCH_QUEUE_SERIAL);
-        _jitManager = [JITManager sharedManager];
+        _jitManager = [JITManager_DolphinOS sharedManager];
 
         // Initialize Metal
         _metalDevice = MTLCreateSystemDefaultDevice();
@@ -71,9 +71,21 @@
         return NO;
     }
 
-    // Initialize JIT first
-    if (![self.jitManager initializeJIT]) {
-        NSLog(@"[ARMSX2-Bridge] Warning: JIT initialization failed, performance may be affected");
+    // Initialize DolphinOS JIT (LuckNoTXM mode - best balance of performance and simplicity)
+    if (![self.jitManager initializeWithMode:JITModeLuckNoTXM]) {
+        NSLog(@"[ARMSX2-Bridge] Warning: DolphinOS JIT initialization failed, falling back to legacy mode");
+        // Try legacy mode as fallback (though it won't work on iOS)
+        if (![self.jitManager initializeWithMode:JITModeLegacy]) {
+            NSLog(@"[ARMSX2-Bridge] Error: All JIT modes failed, emulation will not work");
+            if (error) {
+                *error = [NSError errorWithDomain:@"ARMSX2"
+                                             code:1005
+                                         userInfo:@{NSLocalizedDescriptionKey: @"JIT initialization failed"}];
+            }
+            return NO;
+        }
+    } else {
+        NSLog(@"[ARMSX2-Bridge] DolphinOS JIT initialized successfully (mode: %ld)", (long)self.jitManager.mode);
     }
 
     // Initialize PCSX2 core
@@ -287,12 +299,26 @@
 }
 
 - (NSDictionary *)getEmulatorInfo {
+    NSString *jitMode = @"Unknown";
+    switch (self.jitManager.mode) {
+        case JITModeLuckNoTXM:
+            jitMode = @"LuckNoTXM (Per-allocation mirrors)";
+            break;
+        case JITModeLuckTXM:
+            jitMode = @"LuckTXM (Pre-allocated region)";
+            break;
+        case JITModeLegacy:
+            jitMode = @"Legacy (pthread_jit_write_protect_np)";
+            break;
+    }
+
     return @{
         @"version": @"1.0.0",
         @"core": @"PCSX2",
         @"platform": @"iOS",
-        @"jit_enabled": @(self.jitManager.isJITEnabled),
-        @"jit_status": [self.jitManager statusDescription],
+        @"jit_enabled": @(self.jitManager.isInitialized),
+        @"jit_mode": jitMode,
+        @"jit_allocated": @(self.jitManager.totalAllocated),
         @"metal_available": @(self.metalDevice != nil)
     };
 }

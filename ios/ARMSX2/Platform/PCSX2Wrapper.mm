@@ -9,12 +9,14 @@
 #include "PCSX2Wrapper.h"
 #include "AudioIOS.h"
 #include "InputIOS.h"
+#import "../JIT/JITManager_DolphinOS.h"
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
 // PCSX2 headers (these will be properly linked when building with full PCSX2)
 // For now, we'll create stubs that can be replaced with real implementations
+// The DolphinOS JIT C API is available via ARMSX2_JIT_* functions
 
 static bool s_initialized = false;
 static bool s_running = false;
