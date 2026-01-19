@@ -107,6 +107,16 @@ jobs:
         run: |
           xcodebuild -version
           xcodebuild -showsdks
+          echo ""
+          echo "Checking iOS deployment target compatibility..."
+          cd ios
+          DEPLOYMENT_TARGET=$(grep CMAKE_OSX_DEPLOYMENT_TARGET CMakeLists.txt | head -1 | grep -o '"[0-9.]*"' | tr -d '"')
+          echo "Deployment target: iOS $DEPLOYMENT_TARGET"
+          if [ "$DEPLOYMENT_TARGET" = "15.0" ]; then
+            echo "✓ iOS 15.0+ deployment target (compatible with 95% of devices)"
+          else
+            echo "⚠️ Deployment target is $DEPLOYMENT_TARGET"
+          fi
 
       - name: Get App Info
         id: app_info

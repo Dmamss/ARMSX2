@@ -40,12 +40,19 @@ typedef NS_ENUM(NSInteger, JITMode) {
 // Total memory allocated
 @property(readonly, nonatomic) size_t totalAllocated;
 
+// Initialize JIT with automatic mode detection (iOS 15+)
+// Automatically selects best JIT mode based on:
+// - iOS version (26+ enables TXM check)
+// - TXM hardware availability
+// Returns: YES if successful
+- (BOOL)initializeAuto;
+
 // Initialize JIT with specific mode
 // mode: JIT mode to use (default: JITModeLuckNoTXM)
 // Returns: YES if successful
 - (BOOL)initializeWithMode:(JITMode)mode;
 
-// Convenience initializer (uses LuckNoTXM)
+// Convenience initializer (uses auto-detection)
 - (BOOL)initialize;
 
 // Allocate executable memory

@@ -6,6 +6,7 @@
 //
 
 #import "JITManager_DolphinOS.h"
+#import "TXMDetector.h"
 #import <libkern/OSCacheControl.h>
 #import <mach/mach.h>
 #import <pthread.h>
@@ -80,7 +81,33 @@ extern void sys_icache_invalidate(void *start, size_t len);
 }
 
 - (BOOL)initialize {
-    return [self initializeWithMode:JITModeLuckNoTXM];
+    return [self initializeAuto];
+}
+
+- (BOOL)initializeAuto {
+    // Automatic JIT mode selection based on hardware and iOS version
+    // This provides optimal performance on all devices
+
+    NSLog(@"[ARMSX2-JIT-DolphinOS] Auto-detecting optimal JIT mode...");
+    NSLog(@"[ARMSX2-JIT-DolphinOS] %@", [TXMDetector detectionDescription]);
+
+    JITMode selectedMode = JITModeLuckNoTXM;  // Safe default
+
+    // Check if TXM hardware is available (iOS 26+ with TXM chips)
+    if ([TXMDetector hasTXMSupport]) {
+        NSLog(@"[ARMSX2-JIT-DolphinOS] TXM hardware detected - using LuckTXM mode (optimal)");
+        selectedMode = JITModeLuckTXM;
+    } else {
+        NSInteger iosVersion = [TXMDetector iOSMajorVersion];
+        if (iosVersion >= 26) {
+            NSLog(@"[ARMSX2-JIT-DolphinOS] iOS 26+ without TXM - using LuckNoTXM mode");
+        } else {
+            NSLog(@"[ARMSX2-JIT-DolphinOS] iOS %ld - using LuckNoTXM mode (recommended)", (long)iosVersion);
+        }
+        selectedMode = JITModeLuckNoTXM;
+    }
+
+    return [self initializeWithMode:selectedMode];
 }
 
 - (BOOL)initializeWithMode:(JITMode)mode {
