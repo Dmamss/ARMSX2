@@ -69,6 +69,7 @@ endif()
 # iOS-specific source files
 set(IOS_SOURCES
     ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager.mm
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager_DolphinOS.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Bridge/EmulatorBridge.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/HostIOS.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/AudioIOS.mm
@@ -78,6 +79,7 @@ set(IOS_SOURCES
 
 set(IOS_HEADERS
     ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager.h
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager_DolphinOS.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Bridge/EmulatorBridge.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/AudioIOS.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/InputIOS.h
