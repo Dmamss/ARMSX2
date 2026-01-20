@@ -77,6 +77,7 @@ set(IOS_SOURCES
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/PCSX2Wrapper.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/RecMemoryIOS.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/ARM64RecompilerIOS.cpp
+    ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/HostSysIOS.cpp
 )
 
 set(IOS_HEADERS
