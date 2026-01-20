@@ -6,32 +6,31 @@
 //
 
 #import "JITManager.h"
+#import <libkern/OSCacheControl.h>
 #import <mach/mach.h>
 #import <mach/vm_map.h>
 #import <pthread.h>
 #import <sys/mman.h>
 #import <sys/sysctl.h>
-#import <libkern/OSCacheControl.h>
 
 // iOS 26 JIT support APIs
 extern "C" {
-    // iOS 26 specific functions for JIT
-    // These are hypothetical APIs that iOS 26 might provide
-    int pthread_jit_write_protect_np(int enable) __attribute__((weak_import));
-    void sys_icache_invalidate(void *start, size_t len);
+// iOS 26 specific functions for JIT
+// These are hypothetical APIs that iOS 26 might provide
+int pthread_jit_write_protect_np(int enable) __attribute__((weak_import));
+void sys_icache_invalidate(void *start, size_t len);
 
-    // New iOS 26 JIT APIs
-    kern_return_t vm_protect_jit(vm_map_t target_task, vm_address_t address,
-                                  vm_size_t size, boolean_t set_maximum,
-                                  vm_prot_t new_protection) __attribute__((weak_import));
+// New iOS 26 JIT APIs
+kern_return_t vm_protect_jit(vm_map_t target_task, vm_address_t address, vm_size_t size, boolean_t set_maximum,
+                             vm_prot_t new_protection) __attribute__((weak_import));
 }
 
 @interface JITManager ()
-@property (readwrite, nonatomic) JITStatus status;
-@property (readwrite, nonatomic) BOOL isJITEnabled;
-@property (readwrite, nonatomic) size_t totalJITMemory;
-@property (nonatomic) NSMutableDictionary<NSValue *, NSNumber *> *allocations;
-@property (nonatomic) dispatch_queue_t jitQueue;
+@property(readwrite, nonatomic) JITStatus status;
+@property(readwrite, nonatomic) BOOL isJITEnabled;
+@property(readwrite, nonatomic) size_t totalJITMemory;
+@property(nonatomic) NSMutableDictionary<NSValue *, NSNumber *> *allocations;
+@property(nonatomic) dispatch_queue_t jitQueue;
 @end
 
 @implementation JITManager
@@ -39,9 +38,7 @@ extern "C" {
 + (instancetype)sharedManager {
     static JITManager *manager = nil;
     static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        manager = [[JITManager alloc] init];
-    });
+    dispatch_once(&onceToken, ^{ manager = [[JITManager alloc] init]; });
     return manager;
 }
 
@@ -64,8 +61,8 @@ extern "C" {
 
     // Check iOS version
     NSOperatingSystemVersion version = [[NSProcessInfo processInfo] operatingSystemVersion];
-    NSLog(@"[ARMSX2-JIT] iOS Version: %ld.%ld.%ld",
-          (long)version.majorVersion, (long)version.minorVersion, (long)version.patchVersion);
+    NSLog(@"[ARMSX2-JIT] iOS Version: %ld.%ld.%ld", (long)version.majorVersion, (long)version.minorVersion,
+          (long)version.patchVersion);
 
     if (version.majorVersion < 26) {
         NSLog(@"[ARMSX2-JIT] Warning: iOS 26 or later required for optimal JIT support");
@@ -77,7 +74,7 @@ extern "C" {
         self.status = JITStatusAvailable;
     } else {
         NSLog(@"[ARMSX2-JIT] pthread_jit_write_protect_np not available, using fallback");
-        self.status = JITStatusAvailable; // Still attempt to work
+        self.status = JITStatusAvailable;  // Still attempt to work
     }
 
     // Request JIT permission
@@ -139,39 +136,44 @@ extern "C" {
 }
 
 - (void *)allocateJITMemory:(size_t)size {
+#ifdef DEBUG
     NSLog(@"[ARMSX2-JIT] Allocating %zu bytes of JIT memory", size);
+#endif
 
     // Align to page size
     size_t pageSize = getpagesize();
     size_t alignedSize = (size + pageSize - 1) & ~(pageSize - 1);
 
     // Allocate memory with MAP_JIT flag (iOS 14+)
-    void *memory = mmap(NULL, alignedSize,
-                       PROT_READ | PROT_WRITE | PROT_EXEC,
-                       MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT,
-                       -1, 0);
+    void *memory =
+        mmap(NULL, alignedSize, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0);
 
     if (memory == MAP_FAILED) {
         NSLog(@"[ARMSX2-JIT] Failed to allocate JIT memory: %s", strerror(errno));
         return NULL;
     }
 
-    // Track allocation
-    dispatch_sync(self.jitQueue, ^{
+#ifdef DEBUG
+    // Track allocation (debug builds only for leak detection)
+    dispatch_sync (self.jitQueue, ^{
         self.allocations[[NSValue valueWithPointer:memory]] = @(alignedSize);
         self.totalJITMemory += alignedSize;
-    });
+    })
+        ;
 
-    NSLog(@"[ARMSX2-JIT] Allocated %zu bytes at %p (total: %zu bytes)",
-          alignedSize, memory, self.totalJITMemory);
+    NSLog(@"[ARMSX2-JIT] Allocated %zu bytes at %p (total: %zu bytes)", alignedSize, memory, self.totalJITMemory);
+#endif
 
     return memory;
 }
 
 - (void)freeJITMemory:(void *)pointer size:(size_t)size {
-    if (pointer == NULL) return;
+    if (pointer == NULL)
+        return;
 
+#ifdef DEBUG
     NSLog(@"[ARMSX2-JIT] Freeing JIT memory at %p", pointer);
+#endif
 
     // Align to page size
     size_t pageSize = getpagesize();
@@ -179,28 +181,29 @@ extern "C" {
 
     munmap(pointer, alignedSize);
 
-    // Update tracking
-    dispatch_sync(self.jitQueue, ^{
+#ifdef DEBUG
+    // Update tracking (debug builds only)
+    dispatch_sync (self.jitQueue, ^{
         NSValue *key = [NSValue valueWithPointer:pointer];
         NSNumber *allocSize = self.allocations[key];
         if (allocSize) {
             self.totalJITMemory -= [allocSize unsignedLongValue];
             [self.allocations removeObjectForKey:key];
         }
-    });
+    })
+        ;
 
     NSLog(@"[ARMSX2-JIT] Freed memory (remaining: %zu bytes)", self.totalJITMemory);
+#endif
 }
 
 - (BOOL)makeMemoryExecutable:(void *)pointer size:(size_t)size {
-    if (pointer == NULL) return NO;
+    if (pointer == NULL)
+        return NO;
 
     // Use iOS 26's vm_protect_jit if available
     if (vm_protect_jit != NULL) {
-        kern_return_t kr = vm_protect_jit(mach_task_self(),
-                                          (vm_address_t)pointer,
-                                          (vm_size_t)size,
-                                          FALSE,
+        kern_return_t kr = vm_protect_jit(mach_task_self(), (vm_address_t)pointer, (vm_size_t)size, FALSE,
                                           VM_PROT_READ | VM_PROT_EXECUTE);
         if (kr == KERN_SUCCESS) {
             NSLog(@"[ARMSX2-JIT] Memory at %p marked as executable using vm_protect_jit", pointer);
@@ -222,14 +225,12 @@ extern "C" {
 }
 
 - (BOOL)makeMemoryWritable:(void *)pointer size:(size_t)size {
-    if (pointer == NULL) return NO;
+    if (pointer == NULL)
+        return NO;
 
     // Use iOS 26's vm_protect_jit if available
     if (vm_protect_jit != NULL) {
-        kern_return_t kr = vm_protect_jit(mach_task_self(),
-                                          (vm_address_t)pointer,
-                                          (vm_size_t)size,
-                                          FALSE,
+        kern_return_t kr = vm_protect_jit(mach_task_self(), (vm_address_t)pointer, (vm_size_t)size, FALSE,
                                           VM_PROT_READ | VM_PROT_WRITE);
         if (kr == KERN_SUCCESS) {
             NSLog(@"[ARMSX2-JIT] Memory at %p marked as writable using vm_protect_jit", pointer);
@@ -250,12 +251,12 @@ extern "C" {
 
 - (void)flushInstructionCache:(void *)pointer size:(size_t)size {
     // Flush the instruction cache for the modified code
+    // Note: sys_icache_invalidate is sufficient; __builtin___clear_cache is redundant
     sys_icache_invalidate(pointer, size);
 
-    // Also use __builtin___clear_cache if available
-    __builtin___clear_cache((char *)pointer, (char *)pointer + size);
-
+#ifdef DEBUG
     NSLog(@"[ARMSX2-JIT] Flushed instruction cache for %zu bytes at %p", size, pointer);
+#endif
 }
 
 - (NSString *)statusDescription {

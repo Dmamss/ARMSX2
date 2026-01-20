@@ -471,6 +471,22 @@ struct SettingsView: View {
     @State private var biosPath = ""
     @State private var showFilePicker = false
 
+    private func formatBytes(_ bytes: UInt64) -> String {
+        let kb = Double(bytes) / 1024.0
+        let mb = kb / 1024.0
+        let gb = mb / 1024.0
+
+        if gb >= 1.0 {
+            return String(format: "%.2f GB", gb)
+        } else if mb >= 1.0 {
+            return String(format: "%.2f MB", mb)
+        } else if kb >= 1.0 {
+            return String(format: "%.2f KB", kb)
+        } else {
+            return "\(bytes) bytes"
+        }
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -505,7 +521,54 @@ struct SettingsView: View {
                     let info = EmulatorBridge.shared().getEmulatorInfo() as? [String: Any]
                     Text("Version: \(info?["version"] as? String ?? "Unknown")")
                     Text("Core: \(info?["core"] as? String ?? "Unknown")")
-                    Text("JIT Status: \(info?["jit_status"] as? String ?? "Unknown")")
+                    Text("Platform: \(info?["platform"] as? String ?? "Unknown")")
+                }
+
+                Section(header: Text("JIT Information")) {
+                    let info = EmulatorBridge.shared().getEmulatorInfo() as? [String: Any]
+                    let jitStatus = info?["jit_status"] as? String ?? "Unknown"
+                    let jitEnabled = jitStatus.contains("enabled")
+
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        Text(jitStatus)
+                            .font(.caption)
+                            .foregroundColor(jitEnabled ? .green : .orange)
+                            .multilineTextAlignment(.trailing)
+                    }
+
+                    if let recommendedMethod = info?["jit_recommended_method"] as? String,
+                       !jitEnabled {
+                        HStack {
+                            Text("Recommended")
+                            Spacer()
+                            Text(recommendedMethod)
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    }
+
+                    if jitEnabled {
+                        Text("Mode: \(info?["jit_mode"] as? String ?? "Unknown")")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+
+                        let allocated = info?["jit_allocated"] as? UInt64 ?? 0
+                        if allocated > 0 {
+                            Text("Allocated: \(formatBytes(allocated))")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+
+                    if let instructions = info?["jit_instructions"] as? String {
+                        NavigationLink(destination: JITInstructionsView(instructions: instructions)) {
+                            Text("How to Enable JIT")
+                                .foregroundColor(.blue)
+                        }
+                    }
                 }
             }
             .navigationTitle("Settings")
@@ -527,6 +590,30 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+// JIT Instructions View
+struct JITInstructionsView: View {
+    let instructions: String
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("How to Enable JIT")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+
+                Text(instructions)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer()
+            }
+            .padding()
+        }
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

@@ -1,0 +1,74 @@
+#!/bin/bash
+#
+# Git pre-commit hook to check code formatting
+#
+# To install this hook:
+#   cp ios/scripts/pre-commit.hook .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# To bypass this hook temporarily:
+#   git commit --no-verify
+#
+
+# Get the root directory
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+IOS_DIR="$ROOT_DIR/ios"
+
+# Check if clang-format is available
+if ! command -v clang-format &> /dev/null; then
+    echo "Warning: clang-format not found, skipping format check"
+    echo "Install it with: brew install clang-format"
+    exit 0
+fi
+
+# Get list of staged iOS files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep "^ios/ARMSX2/.*\.\(h\|m\|mm\)$" || true)
+
+if [ -z "$STAGED_FILES" ]; then
+    # No iOS files staged, skip check
+    exit 0
+fi
+
+echo "Checking code formatting for staged iOS files..."
+
+FAILED=0
+FAILED_FILES=()
+
+for FILE in $STAGED_FILES; do
+    echo -n "  Checking $FILE... "
+
+    if ! clang-format --dry-run --Werror "$FILE" 2>/dev/null; then
+        echo "NEEDS FORMATTING"
+        FAILED=1
+        FAILED_FILES+=("$FILE")
+    else
+        echo "OK"
+    fi
+done
+
+if [ $FAILED -eq 1 ]; then
+    echo ""
+    echo "ERROR: The following files need formatting:"
+    for FILE in "${FAILED_FILES[@]}"; do
+        echo "  - $FILE"
+    done
+    echo ""
+    echo "Format them with:"
+    echo "  cd ios"
+    echo "  ./scripts/format-code.sh"
+    echo ""
+    echo "Or format individual files:"
+    for FILE in "${FAILED_FILES[@]}"; do
+        echo "  clang-format -i $FILE"
+    done
+    echo ""
+    echo "Then stage the changes and commit again."
+    echo ""
+    echo "To bypass this check (not recommended):"
+    echo "  git commit --no-verify"
+    echo ""
+    exit 1
+fi
+
+echo "All staged files are properly formatted!"
+exit 0

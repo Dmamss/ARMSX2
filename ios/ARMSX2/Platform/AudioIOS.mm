@@ -5,10 +5,10 @@
 //  iOS Audio backend for PCSX2 using AVAudioEngine
 //
 
-#import <Foundation/Foundation.h>
-#import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
+#import <AVFoundation/AVFoundation.h>
 #include <cstring>
+#import <Foundation/Foundation.h>
 #include <mutex>
 
 // Audio buffer size
@@ -16,12 +16,11 @@ static constexpr int AUDIO_BUFFER_SIZE = 2048;
 static constexpr int AUDIO_SAMPLE_RATE = 48000;
 static constexpr int AUDIO_CHANNELS = 2;
 
-@interface AudioEngineIOS : NSObject
-{
-    AVAudioEngine* _audioEngine;
-    AVAudioPlayerNode* _playerNode;
-    AVAudioPCMBuffer* _audioBuffer;
-    AVAudioFormat* _audioFormat;
+@interface AudioEngineIOS : NSObject {
+    AVAudioEngine *_audioEngine;
+    AVAudioPlayerNode *_playerNode;
+    AVAudioPCMBuffer *_audioBuffer;
+    AVAudioFormat *_audioFormat;
     BOOL _isRunning;
     std::mutex _mutex;
 }
@@ -31,24 +30,20 @@ static constexpr int AUDIO_CHANNELS = 2;
 - (void)shutdown;
 - (void)start;
 - (void)stop;
-- (void)submitSamples:(const int16_t*)data frameCount:(int)frameCount;
+- (void)submitSamples:(const int16_t *)data frameCount:(int)frameCount;
 
 @end
 
 @implementation AudioEngineIOS
 
-+ (instancetype)sharedInstance
-{
-    static AudioEngineIOS* instance = nil;
++ (instancetype)sharedInstance {
+    static AudioEngineIOS *instance = nil;
     static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        instance = [[AudioEngineIOS alloc] init];
-    });
+    dispatch_once(&onceToken, ^{ instance = [[AudioEngineIOS alloc] init]; });
     return instance;
 }
 
-- (instancetype)init
-{
+- (instancetype)init {
     self = [super init];
     if (self) {
         _isRunning = NO;
@@ -57,14 +52,13 @@ static constexpr int AUDIO_CHANNELS = 2;
     return self;
 }
 
-- (BOOL)initialize
-{
+- (BOOL)initialize {
     NSLog(@"[ARMSX2-Audio] Initializing iOS audio engine...");
 
     @try {
         // Create audio format (stereo, 48kHz, 16-bit)
         _audioFormat = [[AVAudioFormat alloc] initStandardFormatWithSampleRate:AUDIO_SAMPLE_RATE
-                                                                       channels:AUDIO_CHANNELS];
+                                                                      channels:AUDIO_CHANNELS];
 
         // Create audio engine
         _audioEngine = [[AVAudioEngine alloc] init];
@@ -76,17 +70,14 @@ static constexpr int AUDIO_CHANNELS = 2;
         [_audioEngine attachNode:_playerNode];
 
         // Connect player node to main mixer
-        [_audioEngine connect:_playerNode
-                           to:_audioEngine.mainMixerNode
-                       format:_audioFormat];
+        [_audioEngine connect:_playerNode to:_audioEngine.mainMixerNode format:_audioFormat];
 
         // Create audio buffer
-        _audioBuffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:_audioFormat
-                                                      frameCapacity:AUDIO_BUFFER_SIZE];
+        _audioBuffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:_audioFormat frameCapacity:AUDIO_BUFFER_SIZE];
 
         // Request audio session
-        AVAudioSession* session = [AVAudioSession sharedInstance];
-        NSError* error = nil;
+        AVAudioSession *session = [AVAudioSession sharedInstance];
+        NSError *error = nil;
 
         // Set category for playback
         [session setCategory:AVAudioSessionCategoryPlayback
@@ -127,14 +118,13 @@ static constexpr int AUDIO_CHANNELS = 2;
 
         return YES;
 
-    } @catch (NSException* exception) {
+    } @catch (NSException *exception) {
         NSLog(@"[ARMSX2-Audio] Exception initializing audio: %@", exception);
         return NO;
     }
 }
 
-- (void)shutdown
-{
+- (void)shutdown {
     NSLog(@"[ARMSX2-Audio] Shutting down audio engine...");
 
     std::lock_guard<std::mutex> lock(_mutex);
@@ -153,17 +143,17 @@ static constexpr int AUDIO_CHANNELS = 2;
     _audioFormat = nil;
 
     // Deactivate audio session
-    AVAudioSession* session = [AVAudioSession sharedInstance];
+    AVAudioSession *session = [AVAudioSession sharedInstance];
     [session setActive:NO error:nil];
 
     NSLog(@"[ARMSX2-Audio] Audio engine shut down");
 }
 
-- (void)start
-{
+- (void)start {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    if (_isRunning) return;
+    if (_isRunning)
+        return;
 
     NSLog(@"[ARMSX2-Audio] Starting audio playback...");
 
@@ -174,11 +164,11 @@ static constexpr int AUDIO_CHANNELS = 2;
     }
 }
 
-- (void)stop
-{
+- (void)stop {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    if (!_isRunning) return;
+    if (!_isRunning)
+        return;
 
     NSLog(@"[ARMSX2-Audio] Stopping audio playback...");
 
@@ -189,8 +179,7 @@ static constexpr int AUDIO_CHANNELS = 2;
     }
 }
 
-- (void)submitSamples:(const int16_t*)data frameCount:(int)frameCount
-{
+- (void)submitSamples:(const int16_t *)data frameCount:(int)frameCount {
     if (!_isRunning || !_playerNode || !_audioBuffer) {
         return;
     }
@@ -206,7 +195,7 @@ static constexpr int AUDIO_CHANNELS = 2;
     _audioBuffer.frameLength = frameCount;
 
     // Copy audio data to buffer
-    int16_t* bufferData = (int16_t*)_audioBuffer.int16ChannelData[0];
+    int16_t *bufferData = (int16_t *)_audioBuffer.int16ChannelData[0];
 
     if (bufferData && data) {
         // Interleaved stereo data
@@ -214,13 +203,12 @@ static constexpr int AUDIO_CHANNELS = 2;
 
         // Schedule buffer for playback
         [_playerNode scheduleBuffer:_audioBuffer
-                 completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack
+             completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack
                   completionHandler:nil];
     }
 }
 
-- (void)dealloc
-{
+- (void)dealloc {
     [self shutdown];
 }
 
@@ -230,44 +218,36 @@ static constexpr int AUDIO_CHANNELS = 2;
 
 extern "C" {
 
-void iOS_Audio_Initialize()
-{
+void iOS_Audio_Initialize() {
     [[AudioEngineIOS sharedInstance] initialize];
 }
 
-void iOS_Audio_Shutdown()
-{
+void iOS_Audio_Shutdown() {
     [[AudioEngineIOS sharedInstance] shutdown];
 }
 
-void iOS_Audio_Start()
-{
+void iOS_Audio_Start() {
     [[AudioEngineIOS sharedInstance] start];
 }
 
-void iOS_Audio_Stop()
-{
+void iOS_Audio_Stop() {
     [[AudioEngineIOS sharedInstance] stop];
 }
 
-void iOS_Audio_SubmitSamples(const int16_t* data, int frameCount)
-{
+void iOS_Audio_SubmitSamples(const int16_t *data, int frameCount) {
     [[AudioEngineIOS sharedInstance] submitSamples:data frameCount:frameCount];
 }
 
-int iOS_Audio_GetSampleRate()
-{
+int iOS_Audio_GetSampleRate() {
     return AUDIO_SAMPLE_RATE;
 }
 
-int iOS_Audio_GetChannels()
-{
+int iOS_Audio_GetChannels() {
     return AUDIO_CHANNELS;
 }
 
-int iOS_Audio_GetBufferSize()
-{
+int iOS_Audio_GetBufferSize() {
     return AUDIO_BUFFER_SIZE;
 }
 
-} // extern "C"
+}  // extern "C"

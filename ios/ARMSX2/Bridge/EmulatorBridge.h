@@ -33,19 +33,19 @@ typedef NS_ENUM(NSInteger, EmulatorState) {
 @interface EmulatorBridge : NSObject
 
 /// Shared singleton instance
-@property (class, readonly, nonatomic) EmulatorBridge *sharedBridge;
+@property(class, readonly, nonatomic) EmulatorBridge *sharedBridge;
 
 /// Current emulator state
-@property (readonly, nonatomic) EmulatorState state;
+@property(readonly, nonatomic) EmulatorState state;
 
 /// Delegate for emulator events
-@property (weak, nonatomic, nullable) id<EmulatorBridgeDelegate> delegate;
+@property(weak, nonatomic, nullable) id<EmulatorBridgeDelegate> delegate;
 
 /// Current FPS
-@property (readonly, nonatomic) double currentFPS;
+@property(readonly, nonatomic) double currentFPS;
 
 /// Whether emulator is initialized
-@property (readonly, nonatomic) BOOL isInitialized;
+@property(readonly, nonatomic) BOOL isInitialized;
 
 /// Initialize the emulator core
 /// @param biosPath Path to PS2 BIOS file

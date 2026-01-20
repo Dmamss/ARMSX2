@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Release Build Entitlements -->
+    <!-- Minimal entitlements for sideloading distribution -->
+
+    <!-- JIT Compilation Entitlement -->
+    <!-- Required for emulation performance -->
+    <!-- External JIT enabler (StikDebug, JitStreamer, AltKit) needed -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!-- Note: get-task-allow and dynamic-codesigning are NOT included -->
+    <!-- These are debug-only and would prevent App Store submission -->
+
+    <!-- Application Groups -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.net.armsx2</string>
+    </array>
+
+    <!-- Background Modes -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+</dict>
+</plist>

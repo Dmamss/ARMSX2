@@ -5,16 +5,18 @@
 //  PCSX2 emulator core wrapper implementation
 //
 
-#import <Foundation/Foundation.h>
 #include "PCSX2Wrapper.h"
+#import "../JIT/JITManager_DolphinOS.h"
 #include "AudioIOS.h"
 #include "InputIOS.h"
+#import <Foundation/Foundation.h>
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
 // PCSX2 headers (these will be properly linked when building with full PCSX2)
 // For now, we'll create stubs that can be replaced with real implementations
+// The DolphinOS JIT C API is available via ARMSX2_JIT_* functions
 
 static bool s_initialized = false;
 static bool s_running = false;
@@ -25,11 +27,9 @@ static double s_speed = 1.0;
 static std::string s_renderer = "Metal";
 static std::string s_current_game;
 
-namespace PCSX2Wrapper
-{
+namespace PCSX2Wrapper {
 
-bool Initialize(const std::string& biosPath, const std::string& dataPath)
-{
+bool Initialize(const std::string &biosPath, const std::string &dataPath) {
     if (s_initialized) {
         NSLog(@"[PCSX2-Wrapper] Already initialized");
         return true;
@@ -42,7 +42,7 @@ bool Initialize(const std::string& biosPath, const std::string& dataPath)
     @try {
         // Initialize Host settings
         std::string settingsPath = dataPath + "/settings.ini";
-        extern void Host::InitializeHostSettings(const char*);
+        extern void Host::InitializeHostSettings(const char *);
         // Host::InitializeHostSettings(settingsPath.c_str());  // Uncomment when linking PCSX2
 
         // Initialize audio
@@ -63,15 +63,15 @@ bool Initialize(const std::string& biosPath, const std::string& dataPath)
 
         return true;
 
-    } @catch (NSException* exception) {
+    } @catch (NSException *exception) {
         NSLog(@"[PCSX2-Wrapper] Exception during initialization: %@", exception);
         return false;
     }
 }
 
-void Shutdown()
-{
-    if (!s_initialized) return;
+void Shutdown() {
+    if (!s_initialized)
+        return;
 
     NSLog(@"[PCSX2-Wrapper] Shutting down PCSX2...");
 
@@ -96,8 +96,7 @@ void Shutdown()
     NSLog(@"[PCSX2-Wrapper] PCSX2 shut down");
 }
 
-bool LoadGame(const std::string& gamePath)
-{
+bool LoadGame(const std::string &gamePath) {
     if (!s_initialized) {
         NSLog(@"[PCSX2-Wrapper] Error: Not initialized");
         return false;
@@ -116,14 +115,13 @@ bool LoadGame(const std::string& gamePath)
         NSLog(@"[PCSX2-Wrapper] Game loaded successfully");
         return true;
 
-    } @catch (NSException* exception) {
+    } @catch (NSException *exception) {
         NSLog(@"[PCSX2-Wrapper] Exception loading game: %@", exception);
         return false;
     }
 }
 
-void Start()
-{
+void Start() {
     if (!s_initialized || s_current_game.empty()) {
         NSLog(@"[PCSX2-Wrapper] Error: Not initialized or no game loaded");
         return;
@@ -143,9 +141,9 @@ void Start()
     NSLog(@"[PCSX2-Wrapper] Emulation started");
 }
 
-void Pause()
-{
-    if (!s_running) return;
+void Pause() {
+    if (!s_running)
+        return;
 
     NSLog(@"[PCSX2-Wrapper] Pausing emulation...");
 
@@ -159,9 +157,9 @@ void Pause()
     NSLog(@"[PCSX2-Wrapper] Emulation paused");
 }
 
-void Resume()
-{
-    if (!s_running || !s_paused) return;
+void Resume() {
+    if (!s_running || !s_paused)
+        return;
 
     NSLog(@"[PCSX2-Wrapper] Resuming emulation...");
 
@@ -175,9 +173,9 @@ void Resume()
     NSLog(@"[PCSX2-Wrapper] Emulation resumed");
 }
 
-void Stop()
-{
-    if (!s_running) return;
+void Stop() {
+    if (!s_running)
+        return;
 
     NSLog(@"[PCSX2-Wrapper] Stopping emulation...");
 
@@ -193,9 +191,9 @@ void Stop()
     NSLog(@"[PCSX2-Wrapper] Emulation stopped");
 }
 
-void Reset()
-{
-    if (!s_running) return;
+void Reset() {
+    if (!s_running)
+        return;
 
     NSLog(@"[PCSX2-Wrapper] Resetting emulation...");
 
@@ -207,9 +205,9 @@ void Reset()
     NSLog(@"[PCSX2-Wrapper] Emulation reset");
 }
 
-void RunFrame()
-{
-    if (!s_running || s_paused) return;
+void RunFrame() {
+    if (!s_running || s_paused)
+        return;
 
     // Update input
     iOS_Input_Update();
@@ -239,8 +237,7 @@ void RunFrame()
     // iOS_Audio_SubmitSamples(audioData, frameCount);
 }
 
-bool SaveState(int slot)
-{
+bool SaveState(int slot) {
     if (!s_running) {
         NSLog(@"[PCSX2-Wrapper] Error: Not running");
         return false;
@@ -254,8 +251,7 @@ bool SaveState(int slot)
     return true;
 }
 
-bool LoadState(int slot)
-{
+bool LoadState(int slot) {
     if (!s_running) {
         NSLog(@"[PCSX2-Wrapper] Error: Not running");
         return false;
@@ -269,55 +265,47 @@ bool LoadState(int slot)
     return true;
 }
 
-double GetFPS()
-{
+double GetFPS() {
     return s_fps;
 }
 
-uint64_t GetFrameCount()
-{
+uint64_t GetFrameCount() {
     return s_frameCount;
 }
 
-bool IsRunning()
-{
+bool IsRunning() {
     return s_running;
 }
 
-bool IsPaused()
-{
+bool IsPaused() {
     return s_paused;
 }
 
-void SetSpeed(double speed)
-{
+void SetSpeed(double speed) {
     s_speed = speed;
     NSLog(@"[PCSX2-Wrapper] Speed set to %.0f%%", speed * 100.0);
 
     // VMManager::SetSpeed(speed);
 }
 
-double GetSpeed()
-{
+double GetSpeed() {
     return s_speed;
 }
 
-void SetRenderer(const std::string& renderer)
-{
+void SetRenderer(const std::string &renderer) {
     s_renderer = renderer;
     NSLog(@"[PCSX2-Wrapper] Renderer set to: %s", renderer.c_str());
 
     // Update PCSX2 renderer settings
 }
 
-std::string GetRenderer()
-{
+std::string GetRenderer() {
     return s_renderer;
 }
 
-bool TakeScreenshot(const std::string& path)
-{
-    if (!s_running) return false;
+bool TakeScreenshot(const std::string &path) {
+    if (!s_running)
+        return false;
 
     NSLog(@"[PCSX2-Wrapper] Taking screenshot: %s", path.c_str());
 
@@ -326,4 +314,4 @@ bool TakeScreenshot(const std::string& path)
     return true;
 }
 
-} // namespace PCSX2Wrapper
+}  // namespace PCSX2Wrapper

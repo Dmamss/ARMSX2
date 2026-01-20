@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- JIT Compilation Entitlement -->
+    <!-- Allows the app to use JIT compilation for dynamic code generation -->
+    <!-- Required for PS2 emulation performance -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!-- Debugging Entitlement -->
+    <!-- Automatically added by Xcode in debug builds -->
+    <!-- Enables JIT workarounds when app is debugged -->
+    <!-- Note: Cannot be used in App Store builds -->
+    <key>get-task-allow</key>
+    <true/>
+
+    <!-- Dynamic Code Signing Entitlement -->
+    <!-- Allows MAP_JIT for writable and executable memory pages -->
+    <!-- Note: Problematic on iOS 15+ arm64e devices -->
+    <!-- Warning: Xcode may refuse to deploy with this entitlement -->
+    <!-- Uncomment only if needed for specific JIT modes -->
+    <!--
+    <key>dynamic-codesigning</key>
+    <true/>
+    -->
+
+    <!-- Application Groups (for shared data) -->
+    <!-- Allows sharing data between app and extensions -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.net.armsx2</string>
+    </array>
+
+    <!-- Network Extensions (for JitStreamer/StikDebug VPN) -->
+    <!-- Note: Requires paid developer account -->
+    <!--
+    <key>com.apple.developer.networking.networkextension</key>
+    <array>
+        <string>packet-tunnel-provider</string>
+    </array>
+    -->
+
+    <!-- Background Modes -->
+    <!-- Allows app to run in background for emulation -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+</dict>
+</plist>

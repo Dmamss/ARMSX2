@@ -11,8 +11,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # iOS specific settings
-set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "Minimum iOS deployment version")
-set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "26.0")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum iOS deployment version")
+set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "15.0")
 set(CMAKE_XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2") # iPhone and iPad
 
 # Enable JIT compilation flags
@@ -69,6 +69,9 @@ endif()
 # iOS-specific source files
 set(IOS_SOURCES
     ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager.mm
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager_DolphinOS.mm
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/TXMDetector.mm
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITAcquisition.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Bridge/EmulatorBridge.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/HostIOS.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/AudioIOS.mm
@@ -78,6 +81,9 @@ set(IOS_SOURCES
 
 set(IOS_HEADERS
     ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager.h
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager_DolphinOS.h
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/TXMDetector.h
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITAcquisition.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Bridge/EmulatorBridge.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/AudioIOS.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/InputIOS.h
