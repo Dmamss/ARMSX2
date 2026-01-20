@@ -69,19 +69,25 @@ endif()
 # iOS-specific source files
 set(IOS_SOURCES
     ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager.mm
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager_DolphinOS.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Bridge/EmulatorBridge.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/HostIOS.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/AudioIOS.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/InputIOS.mm
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/PCSX2Wrapper.mm
+    ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/RecMemoryIOS.mm
+    ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/ARM64RecompilerIOS.cpp
 )
 
 set(IOS_HEADERS
     ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager.h
+    ${CMAKE_SOURCE_DIR}/ARMSX2/JIT/JITManager_DolphinOS.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Bridge/EmulatorBridge.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/AudioIOS.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/InputIOS.h
     ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/PCSX2Wrapper.h
+    ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/RecMemoryIOS.h
+    ${CMAKE_SOURCE_DIR}/ARMSX2/Platform/ARM64RecompilerIOS.h
 )
 
 # Create iOS library

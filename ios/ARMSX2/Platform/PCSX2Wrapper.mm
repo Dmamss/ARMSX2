@@ -9,6 +9,8 @@
 #include "PCSX2Wrapper.h"
 #include "AudioIOS.h"
 #include "InputIOS.h"
+#include "RecMemoryIOS.h"
+#include "ARM64RecompilerIOS.h"
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
@@ -40,6 +42,14 @@ bool Initialize(const std::string& biosPath, const std::string& dataPath)
     NSLog(@"[PCSX2-Wrapper]   Data: %s", dataPath.c_str());
 
     @try {
+        // Initialize JIT/Recompiler first (CRITICAL!)
+        NSLog(@"[PCSX2-Wrapper] Initializing JIT recompiler...");
+        if (!ARM64RecompilerIOS::Initialize()) {
+            NSLog(@"[PCSX2-Wrapper] ERROR: Failed to initialize JIT recompiler!");
+            return false;
+        }
+        NSLog(@"[PCSX2-Wrapper] JIT recompiler initialized successfully");
+
         // Initialize Host settings
         std::string settingsPath = dataPath + "/settings.ini";
         extern void Host::InitializeHostSettings(const char*);
@@ -91,6 +101,10 @@ void Shutdown()
 
     // Shutdown PCSX2 core
     // VMManager::Shutdown();
+
+    // Shutdown JIT/Recompiler last
+    ARM64RecompilerIOS::Shutdown();
+    NSLog(@"[PCSX2-Wrapper] JIT recompiler shut down");
 
     s_initialized = false;
     NSLog(@"[PCSX2-Wrapper] PCSX2 shut down");
